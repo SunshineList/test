@@ -14,11 +14,3 @@ database_id = "292880"
 kv_namespaces = [
   { binding = "SUBLINK_FULL_KV", id = "Tuple214sjkfj1241241kslfk@" }
 ]
-
-# 环境变量配置
-[vars]
-# 管理员用户名，默认为 admin
-ADMIN_USER = "admin"
-
-# 管理员密码需要在部署时设置，或通过 wrangler secret 命令设置
-# 示例：wrangler secret put ADMIN_PASSWORD
