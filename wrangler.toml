@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # KV存储绑定 - 用于存储配置文件和临时数据
 kv_namespaces = [
-  { binding = "SUBLINK_FULL_KV", id = "39414c72dd60475499e5783e1fe34f51" }
+  { binding = "SUBLINK_FULL_KV", id = "31f210a25b9b4e96b27b303b1edd5d94" }
 ]
 
 # D1数据库绑定 - 用于存储配置元数据和token信息
