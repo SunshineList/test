@@ -744,6 +744,8 @@ function parseProxyFromUri(uri) {
       return parseVless(uri);
     } else if (uri.startsWith('trojan://')) {
       return parseTrojan(uri);
+    } else if (uri.startsWith('hy2://') || uri.startsWith('hysteria2://')) {
+      return parseHysteria2(uri);
     }
     return null;
   } catch (error) {
@@ -810,5 +812,19 @@ function parseTrojan(uri) {
     server: url.hostname,
     server_port: parseInt(url.port) || 443,
     password: url.username
+  };
+}
+
+// 解析Hysteria2节点
+function parseHysteria2(uri) {
+  const url = new URL(uri);
+  return {
+    type: 'hysteria2',
+    tag: decodeURIComponent(url.hash?.substring(1) || ''),
+    server: url.hostname,
+    server_port: parseInt(url.port) || 443,
+    password: url.username,
+    up_mbps: parseInt(url.searchParams.get('upmbps')) || 10,
+    down_mbps: parseInt(url.searchParams.get('downmbps')) || 50
   };
 }
