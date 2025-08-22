@@ -123,6 +123,12 @@ function createKvNamespace() {
 
 // 更新wrangler.toml文件
 function updateWranglerConfig(kvNamespaceId) {
+  // 如果是占位符ID，不要更新配置文件
+  if (kvNamespaceId === 'PLACEHOLDER_KV_ID_PLEASE_REPLACE') {
+    console.log('⚠️  跳过wrangler.toml更新（保持现有配置）');
+    return;
+  }
+  
   console.log(`更新wrangler.toml文件...`);
   
   try {
@@ -160,29 +166,23 @@ function main() {
       namespace = createKvNamespace();
       
       if (namespace.id === 'PLACEHOLDER_KV_ID_PLEASE_REPLACE') {
-        console.log(`⚠️  KV namespace创建失败，使用占位符ID`);
+        console.log(`⚠️  KV namespace创建失败，保持现有配置`);
+        console.log('💡 建议：手动在Cloudflare Dashboard创建KV namespace或使用现有配置');
+        return; // 直接返回，不更新配置文件
       } else {
         console.log(`✅ KV namespace "${KV_NAMESPACE_NAME}"创建成功，ID: ${namespace.id}`);
+        // 更新wrangler.toml文件
+        updateWranglerConfig(namespace.id);
       }
     } else {
       console.log(`✅ KV namespace "${namespace.title}"已存在，ID: ${namespace.id}`);
+      console.log('ℹ️  检测到现有KV namespace，跳过创建和配置更新');
     }
     
-    // 更新wrangler.toml文件
-    updateWranglerConfig(namespace.id);
-    
-    if (namespace.id === 'PLACEHOLDER_KV_ID_PLEASE_REPLACE') {
-      console.log('\n⚠️  KV存储设置部分完成（需要手动配置）');
-      console.log('\n📋 必须完成的步骤:');
-      console.log('1. 在Cloudflare Dashboard手动创建KV namespace');
-      console.log('2. 将真实的KV namespace ID替换wrangler.toml中的占位符');
-      console.log('3. 运行 npm run deploy 部署Worker');
-    } else {
-      console.log('\n✅ KV存储设置完成！');
-      console.log('\n📋 后续步骤:');
-      console.log('1. 运行 npm run deploy 部署Worker');
-      console.log('2. 测试配置转换功能');
-    }
+    console.log('\n✅ KV存储设置完成！');
+    console.log('\n📋 后续步骤:');
+    console.log('1. 运行 npm run deploy 部署Worker');
+    console.log('2. 测试配置转换功能');
     
   } catch (error) {
     console.error('\n❌ KV存储设置失败:', error.message);
