@@ -83,15 +83,16 @@ async function handleRequest(request, env, ctx) {
         return new Response(t('missingToken'), { status: 400 });
       }
 
+      temp_token = localStorage.getItem('temp_token');
+      const storedConfig = await configManager.getConfigByToken(token);
       // 如果有token，从存储的配置获取
-      if (token) {
-        const storedConfig = await configManager.getConfigByToken(token);
-        if (!storedConfig) {
-          return new Response('Invalid token', { status: 401 });
-        }
-        
+      if (token && storedConfig) {
         // 从存储的配置生成订阅内容
         return generateSubscriptionResponse(storedConfig, url.pathname);
+      }
+
+      if (token && temp_token != token){
+        return new Response(t('invalidToken'), { status: 400 });
       }
       
       // 获取语言参数，如果为空则使用默认值

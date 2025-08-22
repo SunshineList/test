@@ -303,7 +303,7 @@ const saveConfigFromUrl = () => `
         headers: {
           'Content-Type': 'application/json',
         },
-        includeCredentials: true,
+        credentials: 'include',
         body: JSON.stringify(saveData)
       });
       
@@ -788,6 +788,7 @@ const submitFormFunction = () => `
       if (document.getElementById('customToken')) {
         document.getElementById('customToken').value = token;
       }
+      localStorage.setItem('temp_token', token);
     }
 
     const configParam = configId ? \`&configId=\${configId}\` : '';
@@ -1811,7 +1812,7 @@ const configHistoryFunctions = () => `
         headers: {
           'Content-Type': 'application/json'
         },
-        includeCredentials: true,
+        credentials: 'include',
         body: JSON.stringify(configData)
       });
       
@@ -1951,7 +1952,7 @@ const configHistoryFunctions = () => `
     try {
       const response = await fetch(\`/api/configs/\${configId}\`, {
         method: 'DELETE',
-        includeCredentials: true,
+        credentials: 'include'
         headers: {
           'Content-Type': 'application/json'
         }
