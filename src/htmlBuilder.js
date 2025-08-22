@@ -36,13 +36,21 @@ const generateBody = (xrayUrl, singboxUrl, clashUrl, surgeUrl, baseUrl) => `
   <body>
     ${generateDarkModeToggle()}
     ${generateGithubLink()}
-    <div class="container mt-5">
+    ${generateLoginButton()}
+    <div class="container-fluid mt-5">
       <div class="card mb-5">
         ${generateCardHeader()}
         <div class="card-body">
-          ${generateForm()}
-          <div id="subscribeLinksContainer">
-            ${generateSubscribeLinks(xrayUrl, singboxUrl, clashUrl, surgeUrl, baseUrl)}
+          <div class="row">
+            <div class="col-lg-8">
+              ${generateForm()}
+              <div id="subscribeLinksContainer">
+                ${generateSubscribeLinks(xrayUrl, singboxUrl, clashUrl, surgeUrl, baseUrl)}
+              </div>
+            </div>
+            <div class="col-lg-4">
+              ${generateConfigHistoryPanel()}
+            </div>
           </div>
         </div>
       </div>
@@ -60,6 +68,12 @@ const generateDarkModeToggle = () => `
 const generateGithubLink = () => `
   <a href="https://github.com/SunshineList/test" target="_blank" rel="noopener noreferrer" class="github-link">
     <i class="fab fa-github"></i>
+  </a>
+`;
+
+const generateLoginButton = () => `
+  <a href="/admin" class="btn btn-outline-primary admin-link">
+    <i class="fas fa-cog me-2"></i>管理面板
   </a>
 `;
 
@@ -97,6 +111,7 @@ const generateAdvancedOptions = () => `
   <div id="advancedOptions">
     ${generateRuleSetSelection()}
     ${generateBaseConfigSection()}
+    ${generateTokenConfigSection()}
     ${generateUASection()}
   </div>
 `;
@@ -105,6 +120,9 @@ const generateButtonContainer = () => `
   <div class="button-container d-flex gap-2 mt-4">
     <button type="submit" class="btn btn-primary flex-grow-1">
       <i class="fas fa-sync-alt me-2"></i>${t('convert')}
+    </button>
+    <button type="button" class="btn btn-success" id="saveConfigBtn">
+      <i class="fas fa-save me-2"></i>保存配置
     </button>
     <button type="button" class="btn btn-outline-secondary" id="clearFormBtn">
       <i class="fas fa-trash-alt me-2"></i>${t('clear')}
@@ -179,6 +197,7 @@ const generateScripts = () => `
     ${customPathFunctions()}
     ${saveConfig()}
     ${clearConfig()}
+    ${configHistoryFunctions()}
   </script>
 `;
 
@@ -486,6 +505,37 @@ const generateBaseConfigSection = () => `
       <button type="button" class="btn btn-outline-danger" onclick="clearConfig()">
         <i class="fas fa-trash-alt me-2"></i>${t('clearConfig')}
       </button>
+    </div>
+  </div>
+`;
+
+const generateTokenConfigSection = () => `
+  <div class="form-section">
+    <div class="form-section-title d-flex align-items-center">
+      <i class="fas fa-key me-2"></i>
+      Token配置
+      <span class="tooltip-icon ms-2">
+        <i class="fas fa-question-circle"></i>
+        <span class="tooltip-content">
+          配置自定义Token用于订阅链接访问，留空则自动生成
+        </span>
+      </span>
+    </div>
+    <div class="form-section-content">
+      <div class="mb-3">
+        <label for="customToken" class="form-label">自定义Token</label>
+        <div class="input-group">
+          <input type="text" class="form-control" id="customToken" name="customToken" 
+                 placeholder="留空自动生成唯一Token">
+          <button type="button" class="btn btn-outline-secondary" onclick="generateRandomToken()">
+            <i class="fas fa-dice me-1"></i>随机生成
+          </button>
+        </div>
+        <div class="form-text">
+          <i class="fas fa-info-circle me-1"></i>
+          Token用于生成唯一的订阅链接，支持字母、数字和下划线
+        </div>
+      </div>
     </div>
   </div>
 `;
@@ -1372,5 +1422,407 @@ const clearConfig = () => `
     currentUrl.searchParams.delete('configId');
     window.history.pushState({}, '', currentUrl);
     localStorage.removeItem('configEditor');
+  }
+`;
+
+// 配置历史面板
+const generateConfigHistoryPanel = () => `
+  <div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fas fa-history me-2"></i>配置历史
+      </h5>
+      <button class="btn btn-outline-primary btn-sm" onclick="refreshConfigHistory()">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+    <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+      <div id="configHistoryList">
+        <div class="text-center p-4">
+          <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+          <p class="text-muted">加载中...</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <small class="text-muted">
+        <i class="fas fa-info-circle me-1"></i>
+        最多保存10条配置记录
+      </small>
+    </div>
+  </div>
+`;
+
+// 配置历史项模板
+const generateConfigHistoryItem = (config, index) => `
+  <div class="config-history-item p-3 border-bottom" onclick="loadConfigFromHistory('${config.id}')" data-config-id="${config.id}">
+    <div class="d-flex justify-content-between align-items-start">
+      <div class="flex-grow-1">
+        <h6 class="mb-1">
+          <span class="badge bg-primary config-type-badge me-2">${config.type.toUpperCase()}</span>
+          配置 #${index + 1}
+        </h6>
+        <p class="mb-1 text-muted small">
+          <i class="fas fa-calendar me-1"></i>
+          ${new Date(config.created_at).toLocaleString('zh-CN')}
+        </p>
+        <p class="mb-2 text-muted small">
+          <i class="fas fa-server me-1"></i>
+          节点数: ${config.nodeCount || 0}
+        </p>
+        <div class="subscription-info">
+          <p class="mb-1 small">
+            <strong>订阅地址:</strong>
+          </p>
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control subscription-url" 
+                   value="${generateSubscriptionUrlFromConfig(config)}" readonly>
+            <button class="btn btn-outline-secondary" onclick="copySubscriptionUrlFromHistory(this, event)">
+              <i class="fas fa-copy"></i>
+            </button>
+            <button class="btn btn-outline-primary" onclick="generateQRCodeFromHistory('${generateSubscriptionUrlFromConfig(config)}', event)">
+              <i class="fas fa-qrcode"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('${config.id}', event)" title="加载配置">
+          <i class="fas fa-download"></i>
+        </button>
+        <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('${config.id}', event)" title="删除配置">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+`;
+
+// 生成订阅URL
+const generateSubscriptionUrlFromConfig = (config) => {
+  const baseUrl = window?.location?.origin || 'https://your-domain.workers.dev';
+  const pathMap = {
+    'clash': '/clash',
+    'singbox': '/singbox',
+    'surge': '/surge',
+    'shadowrocket': '/surge'
+  };
+  const path = pathMap[config.type] || '/singbox';
+  return `${baseUrl}${path}?token=${config.token}`;
+};
+
+// 配置历史管理JavaScript函数
+const configHistoryFunctions = () => `
+  // 页面加载时初始化
+  document.addEventListener('DOMContentLoaded', function() {
+    loadConfigHistory();
+    
+    // 绑定保存配置按钮事件
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    if (saveConfigBtn) {
+      saveConfigBtn.addEventListener('click', saveCurrentConfig);
+    }
+  });
+
+  // 加载配置历史
+  async function loadConfigHistory() {
+    try {
+      const response = await fetch('/api/configs', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const configs = await response.json();
+        displayConfigHistory(configs);
+      } else {
+        console.error('Failed to load config history');
+        document.getElementById('configHistoryList').innerHTML = 
+          '<div class="text-center p-4"><p class="text-danger">加载配置历史失败</p></div>';
+      }
+    } catch (error) {
+      console.error('Error loading config history:', error);
+      document.getElementById('configHistoryList').innerHTML = 
+        '<div class="text-center p-4"><p class="text-danger">网络错误</p></div>';
+    }
+  }
+
+  // 显示配置历史
+  function displayConfigHistory(configs) {
+    const listContainer = document.getElementById('configHistoryList');
+    
+    if (!configs || configs.length === 0) {
+      listContainer.innerHTML = 
+        '<div class="text-center p-4"><p class="text-muted">暂无配置记录</p></div>';
+      return;
+    }
+
+    const historyHtml = configs.map((config, index) => {
+      return generateConfigHistoryItemHtml(config, index);
+    }).join('');
+    
+    listContainer.innerHTML = historyHtml;
+  }
+
+  // 生成配置历史项HTML
+  function generateConfigHistoryItemHtml(config, index) {
+    const subscriptionUrl = generateSubscriptionUrlFromConfigJs(config);
+    return \`
+      <div class="config-history-item p-3 border-bottom" data-config-id="\${config.id}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="mb-1">
+              <span class="badge bg-primary config-type-badge me-2">\${config.type.toUpperCase()}</span>
+              配置 #\${index + 1}
+            </h6>
+            <p class="mb-1 text-muted small">
+              <i class="fas fa-calendar me-1"></i>
+              \${new Date(config.created_at).toLocaleString('zh-CN')}
+            </p>
+            <p class="mb-2 text-muted small">
+              <i class="fas fa-server me-1"></i>
+              节点数: \${config.nodeCount || 0}
+            </p>
+            <div class="subscription-info">
+              <p class="mb-1 small">
+                <strong>订阅地址:</strong>
+              </p>
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control subscription-url" 
+                       value="\${subscriptionUrl}" readonly>
+                <button class="btn btn-outline-secondary" onclick="copySubscriptionUrlFromHistory(this, event)">
+                  <i class="fas fa-copy"></i>
+                </button>
+                <button class="btn btn-outline-primary" onclick="generateQRCodeFromHistory('\${subscriptionUrl}', event)">
+                  <i class="fas fa-qrcode"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="config-actions">
+            <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('\${config.id}', event)" title="加载配置">
+              <i class="fas fa-download"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('\${config.id}', event)" title="删除配置">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    \`;
+  }
+
+  // 生成订阅URL (JavaScript版本)
+  function generateSubscriptionUrlFromConfigJs(config) {
+    const baseUrl = window.location.origin;
+    const pathMap = {
+      'clash': '/clash',
+      'singbox': '/singbox',
+      'surge': '/surge',
+      'shadowrocket': '/surge'
+    };
+    const path = pathMap[config.type] || '/singbox';
+    return \`\${baseUrl}\${path}?token=\${config.token}\`;
+  }
+
+  // 保存当前配置
+  async function saveCurrentConfig() {
+    const formData = new FormData(document.getElementById('subscriptionForm'));
+    const configType = formData.get('target') || 'singbox';
+    const subscriptionUrl = formData.get('url');
+    
+    if (!subscriptionUrl) {
+      alert('请先输入订阅链接');
+      return;
+    }
+
+    // 获取当前配置的所有参数
+    const configData = {
+      type: configType,
+      subscriptionUrl: subscriptionUrl,
+      config: formData.get('config') || '',
+      customRules: formData.get('customRules') || '',
+      selectedRules: Array.from(formData.getAll('selectedRules')),
+      shortCode: formData.get('shortCode') || '',
+      maxAllowedRules: formData.get('maxAllowedRules') || '10000',
+      sortBy: formData.get('sortBy') || 'name',
+      includeUnsupportedProxy: formData.has('includeUnsupportedProxy'),
+      emoji: formData.has('emoji'),
+      udp: formData.has('udp'),
+      xudp: formData.has('xudp'),
+      tfo: formData.has('tfo'),
+      fdn: formData.has('fdn'),
+      sort: formData.has('sort'),
+      scv: formData.has('scv'),
+      fpcdn: formData.has('fpcdn'),
+      appendUserinfo: formData.has('appendUserinfo'),
+      customToken: formData.get('customToken') || ''
+    };
+
+    try {
+      const response = await fetch('/api/configs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(configData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        alert('配置保存成功！');
+        loadConfigHistory(); // 重新加载历史列表
+      } else {
+        const error = await response.text();
+        alert('保存失败: ' + error);
+      }
+    } catch (error) {
+      console.error('Error saving config:', error);
+      alert('保存失败: 网络错误');
+    }
+  }
+
+  // 从历史加载配置
+  async function loadConfigFromHistory(configId, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    try {
+      const response = await fetch(\`/api/configs/\${configId}\`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const config = await response.json();
+        populateFormWithConfig(config);
+        alert('配置已加载到表单');
+      } else {
+        alert('加载配置失败');
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
+      alert('加载失败: 网络错误');
+    }
+  }
+
+  // 用配置数据填充表单
+  function populateFormWithConfig(config) {
+    const form = document.getElementById('subscriptionForm');
+    const configData = JSON.parse(config.config_data);
+    
+    // 填充基本字段
+    form.url.value = configData.subscriptionUrl || '';
+    form.target.value = configData.type || 'singbox';
+    form.config.value = configData.config || '';
+    form.customRules.value = configData.customRules || '';
+    form.shortCode.value = configData.shortCode || '';
+    form.maxAllowedRules.value = configData.maxAllowedRules || '10000';
+    form.sortBy.value = configData.sortBy || 'name';
+    
+    // 填充Token字段
+    const customTokenField = document.getElementById('customToken');
+    if (customTokenField) {
+      customTokenField.value = configData.customToken || '';
+    }
+    
+    // 填充复选框
+    form.includeUnsupportedProxy.checked = configData.includeUnsupportedProxy || false;
+    form.emoji.checked = configData.emoji || false;
+    form.udp.checked = configData.udp || false;
+    form.xudp.checked = configData.xudp || false;
+    form.tfo.checked = configData.tfo || false;
+    form.fdn.checked = configData.fdn || false;
+    form.sort.checked = configData.sort || false;
+    form.scv.checked = configData.scv || false;
+    form.fpcdn.checked = configData.fpcdn || false;
+    form.appendUserinfo.checked = configData.appendUserinfo || false;
+    
+    // 填充选择的规则
+    if (configData.selectedRules && configData.selectedRules.length > 0) {
+      const ruleCheckboxes = form.querySelectorAll('input[name="selectedRules"]');
+      ruleCheckboxes.forEach(checkbox => {
+        checkbox.checked = configData.selectedRules.includes(checkbox.value);
+      });
+    }
+  }
+
+  // 删除配置
+  async function deleteConfigFromHistory(configId, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!confirm('确定要删除这个配置吗？')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(\`/api/configs/\${configId}\`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        alert('配置已删除');
+        loadConfigHistory(); // 重新加载历史列表
+      } else {
+        alert('删除失败');
+      }
+    } catch (error) {
+      console.error('Error deleting config:', error);
+      alert('删除失败: 网络错误');
+    }
+  }
+
+  // 复制订阅URL
+  function copySubscriptionUrlFromHistory(button, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    const input = button.parentElement.querySelector('.subscription-url');
+    input.select();
+    document.execCommand('copy');
+    
+    const originalIcon = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => {
+      button.innerHTML = originalIcon;
+    }, 2000);
+  }
+
+  // 生成二维码
+  function generateQRCodeFromHistory(url, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    // 使用现有的二维码生成函数
+    generateQRCode(url);
+  }
+
+  // 刷新配置历史
+  function refreshConfigHistory() {
+    document.getElementById('configHistoryList').innerHTML = 
+      '<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i><p class="text-muted">加载中...</p></div>';
+    loadConfigHistory();
+  }
+
+  // 生成随机Token
+  function generateRandomToken() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_';
+    let token = '';
+    for (let i = 0; i < 16; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('customToken').value = token;
   }
 `;

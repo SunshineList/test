@@ -49,9 +49,9 @@ async function handleRequest(request, env, ctx) {
       const isAuthenticated = await authHandler.verifyAuth(request);
       if (isAuthenticated) {
         // 获取配置列表和统计信息
-        const configList = await configManager.getConfigList();
-        const stats = await configManager.getConfigStats();
-        return new Response(generateAdminHtml(configList, stats), {
+        // const configList = await configManager.getConfigList();
+        // const stats = await configManager.getConfigStats();
+        return new Response(generateHtml('', '', '', '', url.origin), {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
       } else {
@@ -374,30 +374,82 @@ async function handleApiRequest(request, configManager) {
     // 创建新配置
     if (path === '/api/configs' && request.method === 'POST') {
       const requestData = await request.json();
-      const { type, name, subscriptionUrls, selectedRules, customToken } = requestData;
+      const { 
+        type, 
+        subscriptionUrl, 
+        config, 
+        customRules, 
+        selectedRules, 
+        customToken,
+        shortCode,
+        maxAllowedRules,
+        sortBy,
+        includeUnsupportedProxy,
+        emoji,
+        udp,
+        xudp,
+        tfo,
+        fdn,
+        sort,
+        scv,
+        fpcdn,
+        appendUserinfo
+      } = requestData;
 
-      if (!type || !subscriptionUrls || !Array.isArray(subscriptionUrls) || subscriptionUrls.length === 0) {
+      if (!type || !subscriptionUrl) {
         return new Response(JSON.stringify({
           success: false,
-          error: '缺少必要参数'
+          error: '缺少必要参数: type 和 subscriptionUrl'
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
 
-      // 获取节点数据
-      const nodes = await fetchNodesFromUrls(subscriptionUrls);
-      
-      // 生成基础配置
-      const baseConfig = generateBaseConfig(type, selectedRules);
-      
-      // 保存配置
-      const result = await configManager.saveConfig(type, baseConfig, nodes, customToken);
-      
-      return new Response(JSON.stringify(result), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      try {
+        // 获取节点数据
+        const nodes = await fetchNodesFromUrl(subscriptionUrl);
+        
+        // 保存配置数据
+        const configData = {
+          type,
+          subscriptionUrl,
+          config: config || '',
+          customRules: customRules || '',
+          selectedRules: selectedRules || [],
+          shortCode: shortCode || '',
+          maxAllowedRules: maxAllowedRules || '10000',
+          sortBy: sortBy || 'name',
+          includeUnsupportedProxy: !!includeUnsupportedProxy,
+          emoji: !!emoji,
+          udp: !!udp,
+          xudp: !!xudp,
+          tfo: !!tfo,
+          fdn: !!fdn,
+          sort: !!sort,
+          scv: !!scv,
+          fpcdn: !!fpcdn,
+          appendUserinfo: !!appendUserinfo
+        };
+        
+        // 保存配置
+        const result = await configManager.saveConfig(type, JSON.stringify(configData), nodes, customToken);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: result
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error.message
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     // 获取单个配置详情
@@ -626,4 +678,126 @@ ${proxies}
 DOMAIN-SUFFIX,cn,DIRECT
 GEOIP,CN,DIRECT
 FINAL,🚀 节点选择`;
+}
+
+// 从单个订阅URL获取节点数据
+async function fetchNodesFromUrl(subscriptionUrl) {
+  try {
+    const response = await fetch(subscriptionUrl, {
+      headers: {
+        'User-Agent': 'ClashForAndroid/2.5.12'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch subscription: ${response.status}`);
+    }
+    
+    const content = await response.text();
+    const nodes = [];
+    
+    // 解析base64编码的内容
+    let decodedContent;
+    try {
+      decodedContent = decodeBase64(content);
+    } catch {
+      // 如果不是base64编码，直接使用原内容
+      decodedContent = content;
+    }
+    
+    // 解析节点
+    const lines = decodedContent.split('\\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      const node = parseProxyFromUri(line.trim());
+      if (node) {
+        nodes.push(node);
+      }
+    }
+    
+    return nodes;
+  } catch (error) {
+    console.error('Error fetching nodes from URL:', error);
+    throw error;
+  }
+}
+
+// 解析代理URI为节点对象
+function parseProxyFromUri(uri) {
+  try {
+    if (uri.startsWith('ss://')) {
+      return parseShadowsocks(uri);
+    } else if (uri.startsWith('vmess://')) {
+      return parseVmess(uri);
+    } else if (uri.startsWith('vless://')) {
+      return parseVless(uri);
+    } else if (uri.startsWith('trojan://')) {
+      return parseTrojan(uri);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error parsing proxy URI:', error);
+    return null;
+  }
+}
+
+// 解析Shadowsocks节点
+function parseShadowsocks(uri) {
+  const url = new URL(uri);
+  const userInfo = url.username ? decodeBase64(url.username) : '';
+  const [method, password] = userInfo.includes(':') ? userInfo.split(':') : ['', ''];
+  
+  return {
+    type: 'shadowsocks',
+    tag: decodeURIComponent(url.hash?.substring(1) || ''),
+    server: url.hostname,
+    server_port: parseInt(url.port) || 443,
+    method: method,
+    password: password
+  };
+}
+
+// 解析VMess节点
+function parseVmess(uri) {
+  try {
+    const data = JSON.parse(decodeBase64(uri.substring(8)));
+    return {
+      type: 'vmess',
+      tag: data.ps || '',
+      server: data.add,
+      server_port: parseInt(data.port) || 443,
+      uuid: data.id,
+      security: data.scy || 'auto',
+      alter_id: parseInt(data.aid) || 0
+    };
+  } catch (error) {
+    console.error('Error parsing VMess:', error);
+    return null;
+  }
+}
+
+// 解析VLESS节点
+function parseVless(uri) {
+  const url = new URL(uri);
+  return {
+    type: 'vless',
+    tag: decodeURIComponent(url.hash?.substring(1) || ''),
+    server: url.hostname,
+    server_port: parseInt(url.port) || 443,
+    uuid: url.username,
+    flow: url.searchParams.get('flow') || '',
+    encryption: url.searchParams.get('encryption') || 'none'
+  };
+}
+
+// 解析Trojan节点
+function parseTrojan(uri) {
+  const url = new URL(uri);
+  return {
+    type: 'trojan',
+    tag: decodeURIComponent(url.hash?.substring(1) || ''),
+    server: url.hostname,
+    server_port: parseInt(url.port) || 443,
+    password: url.username
+  };
 }
