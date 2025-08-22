@@ -303,6 +303,7 @@ const saveConfigFromUrl = () => `
         headers: {
           'Content-Type': 'application/json',
         },
+        includeCredentials: true,
         body: JSON.stringify(saveData)
       });
       
@@ -1810,6 +1811,7 @@ const configHistoryFunctions = () => `
         headers: {
           'Content-Type': 'application/json'
         },
+        includeCredentials: true,
         body: JSON.stringify(configData)
       });
       
@@ -1949,6 +1951,7 @@ const configHistoryFunctions = () => `
     try {
       const response = await fetch(\`/api/configs/\${configId}\`, {
         method: 'DELETE',
+        includeCredentials: true,
         headers: {
           'Content-Type': 'application/json'
         }
