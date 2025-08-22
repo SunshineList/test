@@ -83,7 +83,7 @@ async function handleRequest(request, env, ctx) {
         return new Response(t('missingToken'), { status: 400 });
       }
 
-      temp_token = localStorage.getItem('temp_token');
+      const temp_token = localStorage.getItem('temp_token');
       const storedConfig = await configManager.getConfigByToken(token);
       // 如果有token，从存储的配置获取
       if (token && storedConfig) {
