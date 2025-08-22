@@ -1952,7 +1952,7 @@ const configHistoryFunctions = () => `
     try {
       const response = await fetch(\`/api/configs/\${configId}\`, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         }
