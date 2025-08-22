@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const KV_NAMESPACE = 'SUBLINK_FULL_KV';
-const WORKER_NAME = 'sublink-worker'
+const WORKER_NAME = 'sub-full'
 const KV_NAMESPACE_NAME = `${WORKER_NAME}-${KV_NAMESPACE}`;
 const LEGACY_KV_NAMESPACE_NAME = `${WORKER_NAME}-${WORKER_NAME}-${KV_NAMESPACE}`;  // 历史遗留的命名空间名称
 const WRANGLER_CONFIG_PATH = path.join(__dirname, '..', 'wrangler.toml');
