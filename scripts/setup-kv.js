@@ -87,9 +87,10 @@ function checkKvNamespaceExists() {
 // 创建KV namespace
 function createKvNamespace() {
   console.log(`创建KV namespace "${KV_NAMESPACE_NAME}"...`);
-  const output = runWranglerCommand(`kv namespace create "${KV_NAMESPACE}"`);
   
   try {
+    const output = runWranglerCommand(`kv namespace create "${KV_NAMESPACE}"`);
+    
     // 尝试从输出中提取ID
     const idMatch = output.match(/id\s*=\s*"([^"]+)"/);
     if (idMatch) {
@@ -101,9 +102,22 @@ function createKvNamespace() {
       throw new Error('无法从输出中提取KV namespace ID');
     }
   } catch (error) {
-    console.error('解析创建KV namespace结果失败:', error.message);
-    console.error('原始输出:', output);
-    process.exit(1);
+    console.error('创建KV namespace失败:', error.message);
+    console.log('\n⚠️  KV namespace创建失败，可能的原因:');
+    console.log('- Cloudflare账户权限不足');
+    console.log('- API配额已用完');
+    console.log('- 网络连接问题');
+    console.log('\n💡 解决方案:');
+    console.log('1. 手动在Cloudflare Dashboard创建KV namespace');
+    console.log('2. 将KV namespace ID手动添加到wrangler.toml文件');
+    console.log('3. 或者跳过KV设置，使用内存存储（重启后数据会丢失）');
+    
+    // 提供一个默认的占位符ID，让用户手动替换
+    console.log('\n🔧 临时解决方案: 使用占位符ID，请手动替换');
+    return {
+      title: KV_NAMESPACE_NAME,
+      id: 'PLACEHOLDER_KV_ID_PLEASE_REPLACE'
+    };
   }
 }
 
@@ -144,7 +158,12 @@ function main() {
     if (!namespace) {
       console.log(`KV namespace "${KV_NAMESPACE_NAME}"不存在，正在创建...`);
       namespace = createKvNamespace();
-      console.log(`✅ KV namespace "${KV_NAMESPACE_NAME}"创建成功，ID: ${namespace.id}`);
+      
+      if (namespace.id === 'PLACEHOLDER_KV_ID_PLEASE_REPLACE') {
+        console.log(`⚠️  KV namespace创建失败，使用占位符ID`);
+      } else {
+        console.log(`✅ KV namespace "${KV_NAMESPACE_NAME}"创建成功，ID: ${namespace.id}`);
+      }
     } else {
       console.log(`✅ KV namespace "${namespace.title}"已存在，ID: ${namespace.id}`);
     }
@@ -152,10 +171,18 @@ function main() {
     // 更新wrangler.toml文件
     updateWranglerConfig(namespace.id);
     
-    console.log('\n✅ KV存储设置完成！');
-    console.log('\n📋 后续步骤:');
-    console.log('1. 运行 npm run deploy 部署Worker');
-    console.log('2. 测试配置转换功能');
+    if (namespace.id === 'PLACEHOLDER_KV_ID_PLEASE_REPLACE') {
+      console.log('\n⚠️  KV存储设置部分完成（需要手动配置）');
+      console.log('\n📋 必须完成的步骤:');
+      console.log('1. 在Cloudflare Dashboard手动创建KV namespace');
+      console.log('2. 将真实的KV namespace ID替换wrangler.toml中的占位符');
+      console.log('3. 运行 npm run deploy 部署Worker');
+    } else {
+      console.log('\n✅ KV存储设置完成！');
+      console.log('\n📋 后续步骤:');
+      console.log('1. 运行 npm run deploy 部署Worker');
+      console.log('2. 测试配置转换功能');
+    }
     
   } catch (error) {
     console.error('\n❌ KV存储设置失败:', error.message);
@@ -163,6 +190,7 @@ function main() {
     console.log('- 是否已安装并登录 wrangler CLI');
     console.log('- 是否有足够的 Cloudflare 权限');
     console.log('- 网络连接是否正常');
+    console.log('\n💡 可以尝试手动配置KV namespace');
     process.exit(1);
   }
 }
