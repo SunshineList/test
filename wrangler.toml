@@ -8,7 +8,6 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "SUBLINK_DB"
 database_name = "sublink-worker-db"
-database_id = "Tuple214sjkfj1241241kslfk124jkasf"
 
 # 保留KV用于短链接等临时数据
 kv_namespaces = [
