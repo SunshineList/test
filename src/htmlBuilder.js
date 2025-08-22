@@ -1630,7 +1630,7 @@ const configHistoryFunctions = () => `
 
   // 保存当前配置
   async function saveCurrentConfig() {
-    const formData = new FormData(document.getElementById('subscriptionForm'));
+    const formData = new FormData(document.getElementById('encodeForm'));
     const configType = formData.get('target') || 'singbox';
     const subscriptionUrl = formData.get('url');
     
@@ -1720,7 +1720,7 @@ const configHistoryFunctions = () => `
 
   // 用配置数据填充表单
   function populateFormWithConfig(config) {
-    const form = document.getElementById('subscriptionForm');
+    const form = document.getElementById('encodeForm');
     const configData = typeof config.content === 'string' ? JSON.parse(config.content) : config.content;
     
     // 填充基本字段
