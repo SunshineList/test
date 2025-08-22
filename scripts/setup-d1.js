@@ -1,5 +1,6 @@
 // D1数据库初始化脚本
 const { execSync } = require('child_process');
+const fs = require('fs');
 
 function runCommand(command) {
   try {
