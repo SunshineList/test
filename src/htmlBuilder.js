@@ -121,9 +121,6 @@ const generateButtonContainer = () => `
     <button type="submit" class="btn btn-primary flex-grow-1">
       <i class="fas fa-sync-alt me-2"></i>${t('convert')}
     </button>
-    <button type="button" class="btn btn-success" id="saveConfigBtn">
-      <i class="fas fa-save me-2"></i>保存配置
-    </button>
     <button type="button" class="btn btn-outline-secondary" id="clearFormBtn">
       <i class="fas fa-trash-alt me-2"></i>${t('clear')}
     </button>
@@ -152,6 +149,9 @@ const generateLinkInput = (label, id, value) => `
       </button>
       <button class="btn btn-outline-secondary" type="button" onclick="generateQRCode('${id}')">
         <i class="fas fa-qrcode"></i>
+      </button>
+      <button class="btn btn-success" type="button" onclick="saveConfigFromUrl('${id}')">
+        <i class="fas fa-save"></i>
       </button>
     </div>
   </div>
@@ -195,14 +195,141 @@ const generateScripts = () => `
     ${customRuleFunctions()}
     ${generateQRCodeFunction()}
     ${customPathFunctions()}
+    ${generateRandomTokenFunction()}
+    ${saveConfigFromUrl()}
     ${saveConfig()}
     ${clearConfig()}
     ${configHistoryFunctions()}
   </script>
 `;
 
+const generateRandomTokenFunction = () => `
+  function generateRandomToken() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // 更新token输入框
+    const tokenInput = document.getElementById('customToken');
+    if (tokenInput) {
+      tokenInput.value = result;
+    }
+    
+    return result;
+  }
+`;
+
+const saveConfigFromUrl = () => `
+  async function saveConfigFromUrl(linkId) {
+    const linkInput = document.getElementById(linkId);
+    const configUrl = linkInput.value;
+    
+    if (!configUrl || configUrl.trim() === '') {
+      alert('请先进行转换操作生成配置链接！');
+      return;
+    }
+    
+    // 获取配置类型
+    let configType = '';
+    let isLinkable = false; // 是否支持与左侧UI联动
+    
+    if (linkId === 'xrayLink') {
+      configType = 'xray';
+      isLinkable = false;
+    } else if (linkId === 'singboxLink') {
+      configType = 'singbox';
+      isLinkable = true;
+    } else if (linkId === 'clashLink') {
+      configType = 'clash';
+      isLinkable = true;
+    } else if (linkId === 'surgeLink') {
+      configType = 'surge';
+      isLinkable = false;
+    }
+    
+    // 获取保存按钮的引用
+    const saveButton = linkInput.parentElement.querySelector('button[onclick*="saveConfigFromUrl"]');
+    const originalText = saveButton.innerHTML;
+    
+    try {
+      // 更新按钮状态
+      saveButton.disabled = true;
+      saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      
+      // 请求配置数据
+      const response = await fetch(configUrl);
+      if (!response.ok) {
+        throw new Error('请求失败: ' + response.status);
+      }
+      
+      let configContent;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        configContent = await response.json();
+      } else {
+        configContent = await response.text();
+      }
+      
+      // 从 URL 中提取 token
+      const urlObj = new URL(configUrl);
+      const token = urlObj.searchParams.get('token');
+      
+      // 准备保存的数据
+      const saveData = {
+        type: configType,
+        subscriptionUrls: [configUrl],
+        customToken: token,
+        content: configContent,
+        isLinkable: isLinkable
+      };
+      
+      // 如果是 clash 或 singbox，尝试获取左侧UI的规则选择
+      if (isLinkable) {
+        const selectedRules = Array.from(document.querySelectorAll('.rule-checkbox:checked'))
+          .map(checkbox => checkbox.value);
+        saveData.selectedRules = selectedRules;
+        
+        // 获取自定义规则
+        const customRules = parseCustomRules();
+        saveData.customRules = customRules;
+      }
+      
+      // 发送保存请求
+      const saveResponse = await fetch('/api/configs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(saveData)
+      });
+      
+      const result = await saveResponse.json();
+      
+      if (result.success) {
+        alert(configType.toUpperCase() + ' 配置保存成功！');
+        
+        // 如果有配置历史面板，刷新列表
+        if (typeof refreshConfigHistory === 'function') {
+          refreshConfigHistory();
+        }
+      } else {
+        throw new Error(result.error || '保存失败');
+      }
+      
+    } catch (error) {
+      console.error('保存配置失败:', error);
+      alert('保存失败: ' + error.message);
+    } finally {
+      // 恢复按钮状态
+      saveButton.disabled = false;
+      saveButton.innerHTML = originalText;
+    }
+  }
+`;
 const customPathFunctions = () => `
-  function saveCustomPath() {
     const customPath = document.getElementById('customShortCode').value;
     if (customPath) {
       let savedPaths = JSON.parse(localStorage.getItem('savedCustomPaths') || '[]');
@@ -647,12 +774,27 @@ const submitFormFunction = () => `
     const configId = new URLSearchParams(window.location.search).get('configId') || '';
 
     const customRules = parseCustomRules();
+    
+    // 获取或生成token
+    const customToken = document.getElementById('customToken')?.value || '';
+    let token = customToken;
+    if (!token) {
+      // 如果没有自定义token，生成一个随机token
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      for (let i = 0; i < 32; i++) {
+        token += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      if (document.getElementById('customToken')) {
+        document.getElementById('customToken').value = token;
+      }
+    }
 
     const configParam = configId ? \`&configId=\${configId}\` : '';
-    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}\${configParam}\`;
-    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\`;
-    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\`;
-    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\`;
+    const tokenParam = \`&token=\${token}\`;
+    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}\${configParam}\${tokenParam}\`;
+    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${tokenParam}\`;
+    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${tokenParam}\`;
+    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${tokenParam}\`;
     document.getElementById('xrayLink').value = xrayUrl;
     document.getElementById('singboxLink').value = singboxUrl;
     document.getElementById('clashLink').value = clashUrl;
@@ -1723,6 +1865,9 @@ const configHistoryFunctions = () => `
     const form = document.getElementById('encodeForm');
     const configData = typeof config.content === 'string' ? JSON.parse(config.content) : config.content;
     
+    // 检查是否支持联动（只有Clash和Sing-box支持）
+    const isLinkable = config.type === 'clash' || config.type === 'singbox';
+    
     // 填充基本字段
     document.getElementById('inputTextarea').value = configData.subscriptionUrl || '';
     const targetSelect = document.getElementById('configType');
@@ -1741,7 +1886,7 @@ const configHistoryFunctions = () => `
     // 填充Token字段
     const customTokenField = document.getElementById('customToken');
     if (customTokenField) {
-      customTokenField.value = configData.customToken || '';
+      customTokenField.value = config.token || '';
     }
     
     // 填充复选框
@@ -1764,12 +1909,30 @@ const configHistoryFunctions = () => `
       }
     });
     
-    // 填充选择的规则
+    // 如果支持联动，解析配置并同步到左侧UI
+    if (isLinkable) {
+      syncConfigToUI(config, configData);
+    }
+    
+    // 填充选择的规则（对于所有类型）
     if (configData.selectedRules && configData.selectedRules.length > 0) {
       const ruleCheckboxes = document.querySelectorAll('input[name="selectedRules"]');
       ruleCheckboxes.forEach(checkbox => {
         checkbox.checked = configData.selectedRules.includes(checkbox.value);
       });
+      
+      // 更新预定义规则选择器
+      updatePredefinedRuleSelector(configData.selectedRules);
+    }
+    
+    // 显示高级选项
+    const advancedToggle = document.getElementById('advancedToggle');
+    if (advancedToggle) {
+      advancedToggle.checked = true;
+      const advancedOptions = document.getElementById('advancedOptions');
+      if (advancedOptions) {
+        advancedOptions.classList.add('show');
+      }
     }
   }
 
@@ -1845,5 +2008,180 @@ const configHistoryFunctions = () => `
       token += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     document.getElementById('customToken').value = token;
+  }
+
+  // 同步配置到左侧UI（仅限Clash和Sing-box）
+  async function syncConfigToUI(config, configData) {
+    try {
+      let fullConfig = config.content;
+      if (typeof fullConfig === 'string') {
+        try {
+          fullConfig = JSON.parse(fullConfig);
+        } catch (e) {
+          console.log('配置不是JSON格式，可能是YAML');
+          return;
+        }
+      }
+      
+      if (config.type === 'clash') {
+        syncClashConfigToUI(fullConfig);
+      } else if (config.type === 'singbox') {
+        syncSingboxConfigToUI(fullConfig);
+      }
+    } catch (error) {
+      console.error('同步配置到UI失败:', error);
+    }
+  }
+  
+  function syncClashConfigToUI(clashConfig) {
+    try {
+      if (clashConfig.rules && Array.isArray(clashConfig.rules)) {
+        const extractedRules = extractRulesFromClash(clashConfig.rules);
+        updateUIWithExtractedRules(extractedRules);
+      }
+      if (clashConfig['proxy-groups']) {
+        const baseConfig = convertClashToBaseConfig(clashConfig);
+        const configEditor = document.getElementById('configEditor');
+        if (configEditor) {
+          configEditor.value = JSON.stringify(baseConfig, null, 2);
+        }
+      }
+    } catch (error) {
+      console.error('同步Clash配置失败:', error);
+    }
+  }
+  
+  function syncSingboxConfigToUI(singboxConfig) {
+    try {
+      if (singboxConfig.route && singboxConfig.route.rules) {
+        const extractedRules = extractRulesFromSingbox(singboxConfig.route.rules);
+        updateUIWithExtractedRules(extractedRules);
+      }
+      if (singboxConfig.outbounds) {
+        const baseConfig = convertSingboxToBaseConfig(singboxConfig);
+        const configEditor = document.getElementById('configEditor');
+        if (configEditor) {
+          configEditor.value = JSON.stringify(baseConfig, null, 2);
+        }
+      }
+    } catch (error) {
+      console.error('同步Sing-box配置失败:', error);
+    }
+  }
+  
+  function extractRulesFromClash(rules) {
+    const extractedRules = new Set();
+    rules.forEach(rule => {
+      if (typeof rule === 'string') {
+        const parts = rule.split(',');
+        if (parts.length >= 3) {
+          const ruleType = parts[0];
+          if (ruleType === 'GEOSITE' || ruleType === 'DOMAIN-SUFFIX') {
+            const ruleName = mapClashRuleToUnified(parts[1]);
+            if (ruleName) extractedRules.add(ruleName);
+          }
+        }
+      }
+    });
+    return Array.from(extractedRules);
+  }
+  
+  function extractRulesFromSingbox(rules) {
+    const extractedRules = new Set();
+    rules.forEach(rule => {
+      if (rule.outbound && rule.outbound !== 'direct' && rule.outbound !== 'block') {
+        const ruleName = mapSingboxRuleToUnified(rule);
+        if (ruleName) extractedRules.add(ruleName);
+      }
+    });
+    return Array.from(extractedRules);
+  }
+  
+  function mapClashRuleToUnified(ruleValue) {
+    const mappings = {
+      'google': 'Google', 'youtube': 'Youtube', 'telegram': 'Telegram',
+      'github': 'Github', 'microsoft': 'Microsoft', 'apple': 'Apple', 'bilibili': 'Bilibili'
+    };
+    for (const [key, value] of Object.entries(mappings)) {
+      if (ruleValue.toLowerCase().includes(key)) return value;
+    }
+    return null;
+  }
+  
+  function mapSingboxRuleToUnified(rule) {
+    const mappings = { 
+      'google': 'Google', 'youtube': 'Youtube', 'telegram': 'Telegram',
+      'github': 'Github', 'microsoft': 'Microsoft', 'apple': 'Apple', 'bilibili': 'Bilibili' 
+    };
+    
+    if (rule.geosite) {
+      const geosite = Array.isArray(rule.geosite) ? rule.geosite : [rule.geosite];
+      for (const site of geosite) {
+        for (const [key, value] of Object.entries(mappings)) {
+          if (site.includes(key)) return value;
+        }
+      }
+    }
+    
+    if (rule.domain_suffix) {
+      const domains = Array.isArray(rule.domain_suffix) ? rule.domain_suffix : [rule.domain_suffix];
+      for (const domain of domains) {
+        for (const [key, value] of Object.entries(mappings)) {
+          if (domain.includes(key)) return value;
+        }
+      }
+    }
+    return null;
+  }
+  
+  function updateUIWithExtractedRules(extractedRules) {
+    const ruleCheckboxes = document.querySelectorAll('.rule-checkbox');
+    ruleCheckboxes.forEach(checkbox => checkbox.checked = false);
+    extractedRules.forEach(ruleName => {
+      const checkbox = document.getElementById(ruleName);
+      if (checkbox) checkbox.checked = true;
+    });
+    updatePredefinedRuleSelector(extractedRules);
+  }
+  
+  function updatePredefinedRuleSelector(selectedRules) {
+    const predefinedSelect = document.getElementById('predefinedRules');
+    if (!predefinedSelect) return;
+    
+    const predefinedRuleSets = {
+      'minimal': ['Node Select', 'Ad Block', 'Private', 'Location:CN'],
+      'balanced': ['Node Select', 'Ad Block', 'Google', 'Youtube', 'Telegram', 'Private', 'Location:CN'],
+      'comprehensive': ['Node Select', 'Ad Block', 'AI Services', 'Bilibili', 'Youtube', 'Google', 'Private', 'Location:CN', 'Telegram', 'Github', 'Microsoft', 'Apple', 'Social Media', 'Streaming']
+    };
+    
+    for (const [setName, rules] of Object.entries(predefinedRuleSets)) {
+      if (arraysEqual(selectedRules.sort(), rules.sort())) {
+        predefinedSelect.value = setName;
+        return;
+      }
+    }
+    predefinedSelect.value = 'custom';
+  }
+  
+  function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+  
+  function convertClashToBaseConfig(clashConfig) {
+    return { 
+      'proxy-groups': clashConfig['proxy-groups'] || [], 
+      'rules': clashConfig.rules || [] 
+    };
+  }
+  
+  function convertSingboxToBaseConfig(singboxConfig) {
+    return { 
+      'outbounds': singboxConfig.outbounds || [], 
+      'route': singboxConfig.route || {} 
+    };
   }
 `;
