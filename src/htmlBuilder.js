@@ -339,7 +339,7 @@ const customPathFunctions = () => `
         updateSavedPathsDropdown();
       }
     }
-  }
+  
 
   function updateSavedPathsDropdown() {
     const savedPaths = JSON.parse(localStorage.getItem('savedCustomPaths') || '[]');
