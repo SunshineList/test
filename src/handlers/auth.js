@@ -10,8 +10,9 @@ export class AuthHandler {
 
     // 检查是否需要认证
     isProtectedPath(pathname) {
-        const protectedPaths = ['/admin', '/api/'];
-        return protectedPaths.some(path => pathname.startsWith(path)) || pathname === '/';
+        return true;
+        // const protectedPaths = ['/admin', '/api/'];
+        // return protectedPaths.some(path => pathname.startsWith(path)) || pathname === '/';
     }
 
     // 验证用户身份
