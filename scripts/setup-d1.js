@@ -28,6 +28,10 @@ async function setupD1() {
       console.log(`✅ 数据库创建成功，ID: ${databaseId}`);
       console.log('\n📝 请更新 wrangler.toml 文件中的 database_id:');
       console.log(`database_id = "${databaseId}"`);
+      // 更新wrangler.toml文件
+      const wranglerToml = fs.readFileSync('wrangler.toml', 'utf8');
+      const updatedToml = wranglerToml.replace(/database_id = ".*"/, `database_id = "${databaseId}"`);
+      fs.writeFileSync('wrangler.toml', updatedToml);
     }
     
     console.log('\n2. 初始化数据库表结构...');
