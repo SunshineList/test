@@ -48,9 +48,6 @@ async function handleRequest(request, env, ctx) {
       // 检查是否已登录，显示相应页面
       const isAuthenticated = await authHandler.verifyAuth(request);
       if (isAuthenticated) {
-        // 获取配置列表和统计信息
-        // const configList = await configManager.getConfigList();
-        // const stats = await configManager.getConfigStats();
         return new Response(generateHtml('', '', '', '', url.origin), {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });

@@ -10,9 +10,20 @@ export class AuthHandler {
 
     // 检查是否需要认证
     isProtectedPath(pathname) {
+        // 登录和登出页面不需要认证
+        const publicPaths = ['/login', '/logout'];
+        if (publicPaths.includes(pathname)) {
+            return false;
+        }
+        
+        // 订阅生成路径使用token验证，不需要登录认证
+        const subscriptionPaths = ['/singbox', '/clash', '/surge'];
+        if (subscriptionPaths.some(path => pathname.startsWith(path))) {
+            return false;
+        }
+        
+        // 其他所有路径都需要认证
         return true;
-        // const protectedPaths = ['/admin', '/api/'];
-        // return protectedPaths.some(path => pathname.startsWith(path)) || pathname === '/';
     }
 
     // 验证用户身份

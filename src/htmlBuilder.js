@@ -36,7 +36,7 @@ const generateBody = (xrayUrl, singboxUrl, clashUrl, surgeUrl, baseUrl) => `
   <body>
     ${generateDarkModeToggle()}
     ${generateGithubLink()}
-    ${generateLoginButton()}
+
     <div class="container-fluid mt-5">
       <div class="card mb-5">
         ${generateCardHeader()}
@@ -71,11 +71,11 @@ const generateGithubLink = () => `
   </a>
 `;
 
-const generateLoginButton = () => `
-  <a href="/admin" class="btn btn-outline-primary admin-link">
-    <i class="fas fa-cog me-2"></i>管理面板
-  </a>
-`;
+// const generateLoginButton = () => `
+//   <a href="/admin" class="btn btn-outline-primary admin-link">
+//     <i class="fas fa-cog me-2"></i>管理面板
+//   </a>
+// `;
 
 const generateCardHeader = () => `
   <div class="card-header text-center">
