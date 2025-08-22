@@ -5,7 +5,7 @@ export class ConfigManager {
     constructor(env) {
         this.maxConfigs = 10; // 最多存储10条配置
         this.env = env;
-        this.db = env.SUBLINK_DB;
+        this.db = env.SUB_STORE_DB;
     }
 
     // 生成配置ID和Token
