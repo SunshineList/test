@@ -694,6 +694,14 @@ FINAL,🚀 节点选择`;
 // 从单个订阅URL获取节点数据
 async function fetchNodesFromUrl(subscriptionUrl) {
   try {
+    // 检查是否是单个节点URL（vmess://, vless://, ss://, trojan://, hy2://等）
+    if (subscriptionUrl.match(/^(vmess|vless|ss|trojan|ssr|hy2|hysteria2):\/\//)) {
+      // 直接解析单个节点
+      const node = parseProxyFromUri(subscriptionUrl);
+      return node ? [node] : [];
+    }
+    
+    // 处理HTTP/HTTPS订阅链接
     const response = await fetch(subscriptionUrl, {
       headers: {
         'User-Agent': 'ClashForAndroid/2.5.12'
@@ -717,7 +725,7 @@ async function fetchNodesFromUrl(subscriptionUrl) {
     }
     
     // 解析节点
-    const lines = decodedContent.split('\\n').filter(line => line.trim());
+    const lines = decodedContent.split('\n').filter(line => line.trim());
     
     for (const line of lines) {
       const node = parseProxyFromUri(line.trim());
