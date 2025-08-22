@@ -36,7 +36,8 @@ async function setupAdmin() {
   
   console.log('\n📝 请手动执行以下命令来设置KV存储中的管理员账号:');
   console.log('-----------------------------------------------------');
-  console.log(`wrangler kv:key put "auth:${username}" "${password}" --binding=SUBLINK_FULL_KV`);
+  console.log(`wrangler kv:key put "USER" "${username}" --binding=SUBLINK_FULL_KV`);
+  console.log(`wrangler kv:key put "PASSWORD" "${password}" --binding=SUBLINK_FULL_KV`);
   console.log('-----------------------------------------------------');
   console.log('\n✅ 命令已生成完成。执行上述命令后，您就可以使用这个账号登录管理面板了。');
   console.log('🌐 访问 https://your-worker-domain.workers.dev/ 来登录管理面板');

@@ -15,14 +15,24 @@
 
 ### 1. 设置管理员账号
 
-首先需要设置管理员账号来访问管理面板：
+首先需要在KV存储中设置管理员账号：
 
+**方法一：使用脚本（推荐）**
 ```bash
 # 运行账号设置脚本
 npm run setup-admin
 
 # 按提示输入用户名和密码，然后执行生成的命令
-# 例如：wrangler kv:key put "auth:admin" "your-password" --binding=SUBLINK_FULL_KV
+# 例如：
+# wrangler kv:key put "USER" "admin" --binding=SUBLINK_FULL_KV
+# wrangler kv:key put "PASSWORD" "your-password" --binding=SUBLINK_FULL_KV
+```
+
+**方法二：直接设置KV**
+```bash
+# 直接设置用户名和密码
+wrangler kv:key put "USER" "admin" --binding=SUBLINK_FULL_KV
+wrangler kv:key put "PASSWORD" "your-password" --binding=SUBLINK_FULL_KV
 ```
 
 ### 2. 部署Worker
@@ -40,6 +50,7 @@ npm run deploy
 
 ### 🔐 用户认证系统
 
+- **简化登录**: 使用KV中的`USER`和`PASSWORD`字段进行验证
 - **登录页面**: `/login` - 使用设置的用户名密码登录
 - **会话管理**: 使用JWT token进行会话管理，有效期24小时
 - **访问控制**: 所有管理功能需要登录后才能访问
@@ -191,8 +202,12 @@ scripts/
 
 ## 🔧 配置说明
 
-### 环境变量
-无需额外的环境变量，所有配置存储在KV中。
+### KV存储配置
+系统使用以下KV键值：
+- `USER` - 管理员用户名
+- `PASSWORD` - 管理员密码
+- `config:index` - 配置索引
+- `config:{configId}` - 具体配置数据
 
 ### KV命名空间绑定
 确保 `wrangler.toml` 中正确配置了KV绑定：
@@ -205,7 +220,8 @@ id = "your-kv-namespace-id"
 ## 🚨 注意事项
 
 1. **安全性**: 
-   - 管理员密码存储在KV中，建议使用强密码
+   - 管理员账号信息存储在KV的`USER`和`PASSWORD`字段中
+   - 建议使用强密码
    - JWT密钥硬编码，生产环境建议使用环境变量
 
 2. **性能**:
@@ -222,34 +238,13 @@ id = "your-kv-namespace-id"
 从旧版本升级：
 1. 备份现有KV数据
 2. 更新代码到新版本
-3. 运行 `npm run setup-admin` 设置管理员账号
+3. 设置KV中的`USER`和`PASSWORD`字段
 4. 重新部署：`npm run deploy`
 
 ## 🆘 故障排除
-
-### 常见问题
-
-**Q: 无法登录管理面板**
-A: 检查是否正确设置了管理员账号，确认KV中存在对应的认证信息
-
-**Q: 配置创建失败**
-A: 检查订阅链接是否可访问，确认网络连接正常
-
-**Q: 订阅链接无法使用**
-A: 确认token正确，检查配置是否被意外删除
-
-**Q: 节点数量为0**
-A: 检查订阅链接格式，确认链接返回有效的节点数据
 
 ### 调试方法
 1. 检查Cloudflare Worker日志
 2. 使用浏览器开发者工具查看网络请求
 3. 验证KV存储中的数据结构
-
-## 📞 技术支持
-
-如有问题，请检查：
-1. Cloudflare Worker配置
-2. KV命名空间绑定
-3. 网络连接和订阅链接有效性
-4. 浏览器控制台错误信息
+4. 确认`USER`和`PASSWORD`字段已正确设置

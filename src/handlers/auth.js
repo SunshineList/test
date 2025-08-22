@@ -133,9 +133,10 @@ export class AuthHandler {
             const password = formData.get('password');
 
             // 从KV存储获取用户凭据
-            const storedPassword = await SUBLINK_FULL_KV.get(`auth:${username}`);
+            const storedUser = await SUBLINK_FULL_KV.get('USER');
+            const storedPassword = await SUBLINK_FULL_KV.get('PASSWORD');
             
-            if (!storedPassword || storedPassword !== password) {
+            if (!storedUser || !storedPassword || username !== storedUser || password !== storedPassword) {
                 return this.generateLoginPage('用户名或密码错误');
             }
 
