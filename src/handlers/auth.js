@@ -32,13 +32,13 @@ export class AuthHandler {
     }
 
     // 处理登录请求
-    async handleLogin(request) {
+    async handleLogin(request, env) {
         if (request.method === 'GET') {
             return this.generateLoginPage();
         }
 
         if (request.method === 'POST') {
-            return this.processLogin(request);
+            return this.processLogin(request, env);
         }
 
         return new Response('Method not allowed', { status: 405 });
@@ -126,17 +126,21 @@ export class AuthHandler {
     }
 
     // 处理登录逻辑
-    async processLogin(request) {
+    async processLogin(request, env) {
         try {
             const formData = await request.formData();
             const username = formData.get('username');
             const password = formData.get('password');
 
-            // 从KV存储获取用户凭据
-            const storedUser = await SUBLINK_FULL_KV.get('USER');
-            const storedPassword = await SUBLINK_FULL_KV.get('PASSWORD');
+            // 从环境变量获取用户凭据
+            const adminUser = env.ADMIN_USER || 'admin';
+            const adminPassword = env.ADMIN_PASSWORD;
             
-            if (!storedUser || !storedPassword || username !== storedUser || password !== storedPassword) {
+            if (!adminPassword) {
+                return this.generateLoginPage('系统未配置管理员密码，请联系管理员');
+            }
+            
+            if (username !== adminUser || password !== adminPassword) {
                 return this.generateLoginPage('用户名或密码错误');
             }
 

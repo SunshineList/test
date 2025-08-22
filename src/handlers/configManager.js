@@ -2,21 +2,22 @@
 import { GenerateWebPath } from '../utils.js';
 
 export class ConfigManager {
-    constructor() {
+    constructor(env) {
         this.maxConfigs = 10; // 最多存储10条配置
         this.configPrefix = 'config:';
         this.indexKey = 'config:index';
+        this.env = env;
     }
 
     // 获取配置索引
     async getConfigIndex() {
-        const indexData = await SUBLINK_FULL_KV.get(this.indexKey);
+        const indexData = await this.env.SUBLINK_FULL_KV.get(this.indexKey);
         return indexData ? JSON.parse(indexData) : [];
     }
 
     // 更新配置索引
     async updateConfigIndex(index) {
-        await SUBLINK_FULL_KV.put(this.indexKey, JSON.stringify(index));
+        await this.env.SUBLINK_FULL_KV.put(this.indexKey, JSON.stringify(index));
     }
 
     // 生成配置ID和Token
@@ -70,11 +71,11 @@ export class ConfigManager {
             if (configIndex.length >= this.maxConfigs) {
                 // 删除最旧的配置
                 const oldestConfig = configIndex.shift();
-                await SUBLINK_FULL_KV.delete(`${this.configPrefix}${oldestConfig.id}`);
+                await this.env.SUBLINK_FULL_KV.delete(`${this.configPrefix}${oldestConfig.id}`);
             }
 
             // 保存配置
-            await SUBLINK_FULL_KV.put(`${this.configPrefix}${configId}`, JSON.stringify(configData));
+            await this.env.SUBLINK_FULL_KV.put(`${this.configPrefix}${configId}`, JSON.stringify(configData));
 
             // 更新索引
             configIndex.push({
@@ -107,7 +108,7 @@ export class ConfigManager {
     // 获取配置
     async getConfig(configId) {
         try {
-            const configData = await SUBLINK_FULL_KV.get(`${this.configPrefix}${configId}`);
+            const configData = await this.env.SUBLINK_FULL_KV.get(`${this.configPrefix}${configId}`);
             return configData ? JSON.parse(configData) : null;
         } catch (error) {
             console.error('获取配置失败:', error);
@@ -151,7 +152,7 @@ export class ConfigManager {
             configData.content = await this.rebuildConfig(configData);
 
             // 保存更新后的配置
-            await SUBLINK_FULL_KV.put(`${this.configPrefix}${configId}`, JSON.stringify(configData));
+            await this.env.SUBLINK_FULL_KV.put(`${this.configPrefix}${configId}`, JSON.stringify(configData));
 
             // 更新索引中的节点数量
             const configIndex = await this.getConfigIndex();
@@ -207,7 +208,7 @@ export class ConfigManager {
     async deleteConfig(configId) {
         try {
             // 删除配置数据
-            await SUBLINK_FULL_KV.delete(`${this.configPrefix}${configId}`);
+            await this.env.SUBLINK_FULL_KV.delete(`${this.configPrefix}${configId}`);
 
             // 更新索引
             const configIndex = await this.getConfigIndex();
