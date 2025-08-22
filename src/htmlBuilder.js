@@ -1632,7 +1632,7 @@ const configHistoryFunctions = () => `
   async function saveCurrentConfig() {
     const formData = new FormData(document.getElementById('encodeForm'));
     const configType = formData.get('target') || 'singbox';
-    const subscriptionUrl = formData.get('url');
+    const subscriptionUrl = formData.get('input');
     
     if (!subscriptionUrl) {
       alert('请先输入订阅链接');
@@ -1724,13 +1724,19 @@ const configHistoryFunctions = () => `
     const configData = typeof config.content === 'string' ? JSON.parse(config.content) : config.content;
     
     // 填充基本字段
-    form.url.value = configData.subscriptionUrl || '';
-    form.target.value = configData.type || 'singbox';
-    form.config.value = configData.config || '';
-    form.customRules.value = configData.customRules || '';
-    form.shortCode.value = configData.shortCode || '';
-    form.maxAllowedRules.value = configData.maxAllowedRules || '10000';
-    form.sortBy.value = configData.sortBy || 'name';
+    document.getElementById('inputTextarea').value = configData.subscriptionUrl || '';
+    const targetSelect = document.getElementById('configType');
+    if (targetSelect) targetSelect.value = configData.type || 'singbox';
+    const configEditor = document.getElementById('configEditor');
+    if (configEditor) configEditor.value = configData.config || '';
+    const customRulesField = document.getElementById('customRules');
+    if (customRulesField) customRulesField.value = configData.customRules || '';
+    const shortCodeField = document.getElementById('customShortCode');
+    if (shortCodeField) shortCodeField.value = configData.shortCode || '';
+    const maxRulesField = document.getElementById('maxAllowedRules');
+    if (maxRulesField) maxRulesField.value = configData.maxAllowedRules || '10000';
+    const sortByField = document.getElementById('sortBy');
+    if (sortByField) sortByField.value = configData.sortBy || 'name';
     
     // 填充Token字段
     const customTokenField = document.getElementById('customToken');
@@ -1739,20 +1745,28 @@ const configHistoryFunctions = () => `
     }
     
     // 填充复选框
-    form.includeUnsupportedProxy.checked = configData.includeUnsupportedProxy || false;
-    form.emoji.checked = configData.emoji || false;
-    form.udp.checked = configData.udp || false;
-    form.xudp.checked = configData.xudp || false;
-    form.tfo.checked = configData.tfo || false;
-    form.fdn.checked = configData.fdn || false;
-    form.sort.checked = configData.sort || false;
-    form.scv.checked = configData.scv || false;
-    form.fpcdn.checked = configData.fpcdn || false;
-    form.appendUserinfo.checked = configData.appendUserinfo || false;
+    const checkboxes = {
+      includeUnsupportedProxy: document.getElementById('includeUnsupportedProxy'),
+      emoji: document.getElementById('emoji'),
+      udp: document.getElementById('udp'),
+      xudp: document.getElementById('xudp'),
+      tfo: document.getElementById('tfo'),
+      fdn: document.getElementById('fdn'),
+      sort: document.getElementById('sort'),
+      scv: document.getElementById('scv'),
+      fpcdn: document.getElementById('fpcdn'),
+      appendUserinfo: document.getElementById('appendUserinfo')
+    };
+    
+    Object.keys(checkboxes).forEach(key => {
+      if (checkboxes[key]) {
+        checkboxes[key].checked = configData[key] || false;
+      }
+    });
     
     // 填充选择的规则
     if (configData.selectedRules && configData.selectedRules.length > 0) {
-      const ruleCheckboxes = form.querySelectorAll('input[name="selectedRules"]');
+      const ruleCheckboxes = document.querySelectorAll('input[name="selectedRules"]');
       ruleCheckboxes.forEach(checkbox => {
         checkbox.checked = configData.selectedRules.includes(checkbox.value);
       });

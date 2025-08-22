@@ -72,13 +72,17 @@ async function handleRequest(request, env, ctx) {
     }
     
     // 现有的配置生成路由（支持token验证）
-    else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
+    else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge') || url.pathname.startsWith('/xray')) {
       // 检查token参数
       const token = url.searchParams.get('token');
       let inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
       
+      if (!token) {
+        return new Response(t('missingToken'), { status: 400 });
+      }
+
       // 如果有token，从存储的配置获取
       if (token) {
         const storedConfig = await configManager.getConfigByToken(token);

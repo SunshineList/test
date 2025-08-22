@@ -17,7 +17,7 @@ export class AuthHandler {
         }
         
         // 订阅生成路径使用token验证，不需要登录认证
-        const subscriptionPaths = ['/singbox', '/clash', '/surge'];
+        const subscriptionPaths = ['/singbox', '/clash', '/surge', '/xray'];
         if (subscriptionPaths.some(path => pathname.startsWith(path))) {
             return false;
         }
