@@ -1535,7 +1535,8 @@ const configHistoryFunctions = () => `
       });
       
       if (response.ok) {
-        const configs = await response.json();
+        const result = await response.json();
+        const configs = result.success ? result.data : [];
         displayConfigHistory(configs);
       } else {
         console.error('Failed to load config history');
@@ -1699,8 +1700,14 @@ const configHistoryFunctions = () => `
       });
       
       if (response.ok) {
-        const config = await response.json();
-        populateFormWithConfig(config);
+        const result = await response.json();
+        const config = result.success ? result.data : null;
+        if (config) {
+          populateFormWithConfig(config);
+        } else {
+          alert('配置数据格式错误');
+          return;
+        }
         alert('配置已加载到表单');
       } else {
         alert('加载配置失败');
@@ -1714,7 +1721,7 @@ const configHistoryFunctions = () => `
   // 用配置数据填充表单
   function populateFormWithConfig(config) {
     const form = document.getElementById('subscriptionForm');
-    const configData = JSON.parse(config.config_data);
+    const configData = typeof config.content === 'string' ? JSON.parse(config.content) : config.content;
     
     // 填充基本字段
     form.url.value = configData.subscriptionUrl || '';

@@ -59,6 +59,16 @@ async function handleRequest(request, env, ctx) {
       }
     }
     
+    // 管理面板路由
+    if (request.method === 'GET' && url.pathname === '/admin') {
+      // 获取配置列表和统计信息
+      const configList = await configManager.getConfigList();
+      const stats = await configManager.getConfigStats();
+      return new Response(generateAdminHtml(configList.data, stats), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
     // API路由处理
     if (url.pathname.startsWith('/api/')) {
       return handleApiRequest(request, configManager);

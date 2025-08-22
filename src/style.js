@@ -3,7 +3,7 @@ export const generateStyles = () => `
     --bg-color: #f0f2f5;
     --text-color: #495057;
     --card-bg: #ffffff;
-    --card-header-bg: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    --card-header-bg: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
     --btn-primary-bg: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
     --input-bg: #ffffff;
     --input-border: #ced4da;
@@ -28,7 +28,7 @@ export const generateStyles = () => `
     --bg-color: #1a1a1a;
     --text-color: #e0e0e0;
     --card-bg: #2c2c2c;
-    --card-header-bg: linear-gradient(135deg, #4a0e8f 0%, #1a5ab8 100%);
+    --card-header-bg: linear-gradient(135deg, #263238 0%, #37474f 100%);
     --btn-primary-bg: linear-gradient(135deg, #4a0e8f 0%, #1a5ab8 100%);
     --input-bg: #3c3c3c;
     --input-border: #555555;
@@ -65,11 +65,16 @@ export const generateStyles = () => `
   }
 
   .card-header {
-    background: var(--card-header-bg);
-    color: white;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
     border-radius: 15px 15px 0 0;
     padding: 2.5rem 2rem;
     border-bottom: 1px solid var(--section-border);
+  }
+
+  [data-theme="dark"] .card-header {
+    background: linear-gradient(135deg, #263238 0%, #37474f 100%);
+    color: #81c784;
   }
 
   .card-body {
