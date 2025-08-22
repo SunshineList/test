@@ -4,13 +4,13 @@ main = "src/index.js"
 compatibility_date = "2025-08-22"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 数据库配置
-[[d1_databases]]
-binding = "SUBLINK_DB"
-database_name = "sublink-worker-db"
-database_id = "32ad5aa0-9237-4012-947f-6bbab4ea9a41"
-
-# 保留KV用于短链接等临时数据
+# KV存储绑定 - 用于存储配置文件和临时数据
 kv_namespaces = [
   { binding = "SUBLINK_FULL_KV", id = "39414c72dd60475499e5783e1fe34f51" }
 ]
+
+# D1数据库绑定 - 用于存储配置元数据和token信息
+[[d1_databases]]
+binding = "SUB_STORE_DB"
+database_name = "sub-store-db"
+database_id = "32ad5aa0-9237-4012-947f-6bbab4ea9a41"
