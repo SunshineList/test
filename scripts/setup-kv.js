@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const KV_NAMESPACE = 'SUBLINK_FULL_KV';
-const WORKER_NAME = 'sublink-worker-full'
+const WORKER_NAME = 'sublink-worker'
 const KV_NAMESPACE_NAME = `${WORKER_NAME}-${KV_NAMESPACE}`;
 const LEGACY_KV_NAMESPACE_NAME = `${WORKER_NAME}-${WORKER_NAME}-${KV_NAMESPACE}`;  // 历史遗留的命名空间名称
 const WRANGLER_CONFIG_PATH = path.join(__dirname, '..', 'wrangler.toml');
@@ -13,11 +13,14 @@ const WRANGLER_CONFIG_PATH = path.join(__dirname, '..', 'wrangler.toml');
 // 执行wrangler命令并返回结果
 function runWranglerCommand(command) {
   try {
-    return execSync(`npx wrangler ${command}`, { encoding: 'utf8' });
+    console.log(`执行命令: npx wrangler ${command}`);
+    return execSync(`npx wrangler ${command}`, { encoding: 'utf8', stdio: 'pipe' });
   } catch (error) {
     console.error(`执行命令失败: npx wrangler ${command}`);
-    console.error(error.message);
-    process.exit(1);
+    console.error(`错误信息: ${error.message}`);
+    if (error.stdout) console.error(`标准输出: ${error.stdout}`);
+    if (error.stderr) console.error(`标准错误: ${error.stderr}`);
+    throw error;
   }
 }
 
@@ -131,24 +134,37 @@ function updateWranglerConfig(kvNamespaceId) {
 
 // 主函数
 function main() {
-  console.log('开始设置KV namespace...');
+  console.log('=== Sublink Worker KV存储初始化 ===\n');
   
-  // 检查KV namespace是否存在
-  let namespace = checkKvNamespaceExists();
-  
-  // 如果不存在，则创建
-  if (!namespace) {
-    console.log(`KV namespace "${KV_NAMESPACE_NAME}"不存在，正在创建...`);
-    namespace = createKvNamespace();
-    console.log(`KV namespace "${KV_NAMESPACE_NAME}"创建成功，ID: ${namespace.id}`);
-  } else {
-    console.log(`KV namespace "${KV_NAMESPACE_NAME}"已存在，ID: ${namespace.id}`);
+  try {
+    // 检查KV namespace是否存在
+    let namespace = checkKvNamespaceExists();
+    
+    // 如果不存在，则创建
+    if (!namespace) {
+      console.log(`KV namespace "${KV_NAMESPACE_NAME}"不存在，正在创建...`);
+      namespace = createKvNamespace();
+      console.log(`✅ KV namespace "${KV_NAMESPACE_NAME}"创建成功，ID: ${namespace.id}`);
+    } else {
+      console.log(`✅ KV namespace "${namespace.title}"已存在，ID: ${namespace.id}`);
+    }
+    
+    // 更新wrangler.toml文件
+    updateWranglerConfig(namespace.id);
+    
+    console.log('\n✅ KV存储设置完成！');
+    console.log('\n📋 后续步骤:');
+    console.log('1. 运行 npm run deploy 部署Worker');
+    console.log('2. 测试配置转换功能');
+    
+  } catch (error) {
+    console.error('\n❌ KV存储设置失败:', error.message);
+    console.log('\n🔧 请检查:');
+    console.log('- 是否已安装并登录 wrangler CLI');
+    console.log('- 是否有足够的 Cloudflare 权限');
+    console.log('- 网络连接是否正常');
+    process.exit(1);
   }
-  
-  // 更新wrangler.toml文件
-  updateWranglerConfig(namespace.id);
-  
-  console.log('设置完成！');
 }
 
-main(); 
+main();

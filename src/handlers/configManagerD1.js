@@ -48,8 +48,8 @@ export class ConfigManager {
 
             // 插入新配置
             const stmt = this.db.prepare(`
-                INSERT INTO configs (id, type, content, nodes, token, created_at, updated_at, target)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO configs (id, type, content, nodes, token, created_at, updated_at, target, name, description, access_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             await stmt.bind(
@@ -60,7 +60,10 @@ export class ConfigManager {
                 token,
                 createdAt,
                 createdAt,
-                this.getTargetFromType(type)
+                this.getTargetFromType(type),
+                `${type}配置_${new Date().toLocaleDateString()}`,
+                `自动生成的${type}配置文件`,
+                0
             ).run();
 
             return {
@@ -211,7 +214,7 @@ export class ConfigManager {
     async getConfigList() {
         try {
             const configs = await this.db.prepare(`
-                SELECT id, type, token, created_at, updated_at, target,
+                SELECT id, type, token, created_at, updated_at, target, name, description, access_count,
                        JSON_ARRAY_LENGTH(nodes) as nodeCount
                 FROM configs 
                 ORDER BY created_at DESC
@@ -298,9 +301,11 @@ export class ConfigManager {
                 totalNodes: nodeStats.totalNodes || 0
             };
 
-            typeStats.results.forEach(stat => {
-                stats.byType[stat.type] = stat.count;
-            });
+            if (typeStats.results) {
+                typeStats.results.forEach(stat => {
+                    stats.byType[stat.type] = stat.count;
+                });
+            }
 
             return stats;
         } catch (error) {
@@ -356,7 +361,7 @@ export class ConfigManager {
             const stmt = this.db.prepare(sql);
             const results = await stmt.bind(...params).all();
 
-            return results.results.map(config => ({
+            return (results.results || []).map(config => ({
                 ...config,
                 content: JSON.parse(config.content),
                 nodes: JSON.parse(config.nodes),
