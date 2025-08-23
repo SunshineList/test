@@ -285,7 +285,7 @@ const saveConfigFromUrl = () => `
       // 为配置生成一个新的永久token，不使用URL中的临时token
       const newToken = generatePermanentToken();
       const inputTextarea = document.getElementById('inputTextarea');
-      const nodes = inputTextarea.value.split('\n');
+      const nodes = inputTextarea.value.split('\\n');
 
       // 准备保存的数据
       const saveData = {
