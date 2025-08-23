@@ -72,29 +72,29 @@ async function handleRequest(request, env, ctx) {
     }
     
     // 现有的配置生成路由（支持token验证）
+    // 修改第75-95行的验证逻辑
     else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge') || url.pathname.startsWith('/xray')) {
-      // 检查token参数
       const token = url.searchParams.get('token');
       let inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
       
       if (!token) {
-        return new Response(t('missingToken'), { status: 400 });
-      }
-
-      const temp_token = localStorage.getItem('temp_token');
-      const storedConfig = await configManager.getConfigByToken(token);
-      // 如果有token，从存储的配置获取
-      if (token && storedConfig) {
-        // 从存储的配置生成订阅内容
-        return generateSubscriptionResponse(storedConfig, url.pathname);
-      }
-
-      if (token && temp_token != token){
-        return new Response(t('invalidToken'), { status: 400 });
+      return new Response(t('missingToken'), { status: 400 });
       }
       
+      // 首先检查是否是存储的配置token
+      const storedConfig = await configManager.getConfigByToken(token);
+      if (token && storedConfig) {
+      return generateSubscriptionResponse(storedConfig, url.pathname);
+      }
+      
+      // 然后检查是否是有效的临时token
+      const tempTokenValue = await env.TEMP_TOKENS.get(`temp_${token}`);
+      if (!tempTokenValue) {
+      return new Response(t('invalidToken'), { status: 400 });
+      }
+       
       // 获取语言参数，如果为空则使用默认值
       let lang = url.searchParams.get('lang') || 'zh-CN';
       // Get custom UserAgent
@@ -836,4 +836,29 @@ function parseHysteria2(uri) {
     up_mbps: parseInt(url.searchParams.get('upmbps')) || 10,
     down_mbps: parseInt(url.searchParams.get('downmbps')) || 50
   };
+}
+
+// 在handleApiRequest函数中添加
+if (url.pathname === '/api/store-temp-token' && request.method === 'POST') {
+  try {
+    const { token } = await request.json();
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, error: '缺少token参数' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 存储到KV，设置1小时过期
+    await env.TEMP_TOKENS.put(`temp_${token}`, 'valid', { expirationTtl: 3600 });
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }

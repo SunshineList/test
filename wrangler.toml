@@ -4,12 +4,13 @@ main = "src/index.js"
 compatibility_date = "2025-08-22"
 compatibility_flags = ["nodejs_compat"]
 
-# KV存储绑定 - 用于存储配置文件和临时数据
+# KV存储绑定
 kv_namespaces = [
-  { binding = "SUBLINK_FULL_KV", id = "31f210a25b9b4e96b27b303b1edd5d94" }
+  { binding = "SUBLINK_FULL_KV", id = "31f210a25b9b4e96b27b303b1edd5d94" },
+  { binding = "TEMP_TOKENS", id = "新生成的ID" }
 ]
 
-# D1数据库绑定 - 用于存储配置元数据和token信息
+# D1数据库绑定
 [[d1_databases]]
 binding = "SUB_STORE_DB"
 database_name = "sub-store-db"

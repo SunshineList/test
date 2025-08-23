@@ -7,7 +7,6 @@ const path = require('path');
 const DATABASE_NAME = 'sub-store-db';
 const WRANGLER_CONFIG_PATH = path.join(__dirname, '..', 'wrangler.toml');
 const SCHEMA_PATH = path.join(__dirname, '..', 'database', 'schema.sql');
-const SEED_PATH = path.join(__dirname, '..', 'database', 'seed.sql');
 
 function runCommand(command) {
   try {
@@ -103,29 +102,11 @@ function runMigration() {
   }
   
   try {
-    runCommand(`npx wrangler d1 execute "${DATABASE_NAME}" --file="${SCHEMA_PATH}"`);
+    runCommand(`npx wrangler d1 execute "${DATABASE_NAME}" --remote --file="${SCHEMA_PATH}"`);
     console.log('✅ 数据库迁移完成');
   } catch (error) {
     console.error('数据库迁移失败:', error.message);
     throw error;
-  }
-}
-
-// 执行数据库种子数据
-function runSeed() {
-  console.log('插入种子数据...');
-  
-  if (!fs.existsSync(SEED_PATH)) {
-    console.log('⚠️  种子数据文件不存在，跳过种子数据插入');
-    return;
-  }
-  
-  try {
-    runCommand(`npx wrangler d1 execute "${DATABASE_NAME}" --file="${SEED_PATH}"`);
-    console.log('✅ 种子数据插入完成');
-  } catch (error) {
-    console.error('种子数据插入失败:', error.message);
-    console.log('⚠️  种子数据插入失败，但不影响主要功能');
   }
 }
 
@@ -146,9 +127,6 @@ async function setupD1() {
     
     // 4. 执行数据库迁移
     runMigration();
-    
-    // 5. 插入种子数据
-    runSeed();
     
     console.log('\n✅ 数据库初始化完成！');
     console.log('\n📋 后续步骤:');

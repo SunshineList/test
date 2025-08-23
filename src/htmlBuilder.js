@@ -780,15 +780,29 @@ const submitFormFunction = () => `
     const customToken = document.getElementById('customToken')?.value || '';
     let token = customToken;
     if (!token) {
-      // 如果没有自定义token，生成一个随机token
-      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      for (let i = 0; i < 32; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length));
+      // 每次都生成新的唯一token
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        token = crypto.randomUUID().replace(/-/g, '');
+      } else {
+        token = Date.now().toString(36) + Math.random().toString(36).substr(2);
       }
+      
       if (document.getElementById('customToken')) {
         document.getElementById('customToken').value = token;
       }
-      localStorage.setItem('temp_token', token);
+      
+      // 将token存储到KV（通过API调用）
+      try {
+        await fetch('/api/store-temp-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token })
+        });
+      } catch (error) {
+        console.error('存储临时token失败:', error);
+      }
     }
 
     const configParam = configId ? \`&configId=\${configId}\` : '';
