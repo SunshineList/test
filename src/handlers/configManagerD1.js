@@ -73,8 +73,8 @@ export class ConfigManager {
 
             return {
                 ...config,
-                content: JSON.parse(config.content),
-                nodes: JSON.parse(config.nodes),
+                content: config.content,
+                nodes: config.nodes,
                 // 确保字段名一致性
                 createdAt: config.created_at,
                 updatedAt: config.updated_at
@@ -95,8 +95,8 @@ export class ConfigManager {
 
             return {
                 ...config,
-                content: JSON.parse(config.content),
-                nodes: JSON.parse(config.nodes)
+                content: config.content,
+                nodes: config.nodes
             };
         } catch (error) {
             console.error('通过token获取配置失败:', error);
