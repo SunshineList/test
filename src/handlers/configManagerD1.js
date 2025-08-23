@@ -20,8 +20,8 @@ export class ConfigManager {
     }
 
     async saveConfig(configData, nodes, customToken = null) {
-        const id = generateId();
-        const token = customToken || generateToken();
+        const id = this.generateConfigId(configData.type); // 修正：使用类方法
+        const token = customToken || this.generateToken(id); // 修正：使用类方法
         const target = `${configData.type}-${Date.now()}`;
         
         const stmt = this.db.prepare(`
