@@ -19,68 +19,36 @@ export class ConfigManager {
         return GenerateWebPath(32);
     }
 
-    // 保存配置
-    async saveConfig(type, content, nodes = [], userToken = null) {
-        try {
-            const configId = this.generateConfigId(type);
-            const token = userToken || this.generateToken(configId);
-            const createdAt = new Date().toISOString();
-
-            // 验证配置格式
-            let parsedContent;
-            if (type === 'clash') {
-                if (typeof content === 'string' && (content.trim().startsWith('{') || content.trim().startsWith('['))) {
-                    parsedContent = JSON.parse(content);
-                } else {
-                    parsedContent = content;
-                }
-            } else if (type === 'singbox') {
-                parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-            } else {
-                throw new Error('不支持的配置类型');
-            }
-
-            // 检查是否超过最大数量，删除最旧的配置
-            const countResult = await this.db.prepare('SELECT COUNT(*) as count FROM configs').first();
-            if (countResult.count >= this.maxConfigs) {
-                await this.db.prepare('DELETE FROM configs WHERE id = (SELECT id FROM configs ORDER BY created_at ASC LIMIT 1)').run();
-            }
-
-            // 插入新配置
-            const stmt = this.db.prepare(`
-                INSERT INTO configs (id, type, content, nodes, token, created_at, updated_at, target, name, description, access_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            await stmt.bind(
-                configId,
-                type,
-                JSON.stringify(parsedContent),
-                JSON.stringify(nodes),
-                token,
-                createdAt,
-                createdAt,
-                this.getTargetFromType(type),
-                `${type}配置_${new Date().toLocaleDateString()}`,
-                `自动生成的${type}配置文件`,
-                0
-            ).run();
-
-            return {
-                success: true,
-                configId,
-                token,
-                subscriptionUrl: this.generateSubscriptionUrl(token, type)
-            };
-
-        } catch (error) {
-            console.error('保存配置失败:', error);
-            return {
-                success: false,
-                error: error.message
-            };
+    async saveConfig(configData, nodes, customToken = null) {
+        const id = generateId();
+        const token = customToken || generateToken();
+        const target = `${configData.type}-${Date.now()}`;
+        
+        const stmt = this.db.prepare(`
+            INSERT INTO configs (
+            id, type, content, nodes, token, target, name, description,
+            custom_rules, custom_token, is_linkable, selected_rules, subscription_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        await stmt.bind(
+            id,
+            configData.type,
+            configData.content,
+            JSON.stringify(nodes),
+            token,
+            target,
+            configData.name || null,
+            configData.description || null,
+            configData.customRules,
+            configData.customToken,
+            configData.isLinkable ? 1 : 0,
+            configData.selectedRules,
+            configData.subscriptionUrl
+        ).run();
+        
+        return { id, token, target };
         }
-    }
 
     // 获取配置
     async getConfig(configId) {

@@ -413,26 +413,14 @@ async function handleApiRequest(request, configManager, env) {
       const requestData = await request.json();
       const { 
         type, 
-        subscriptionUrl, 
-        config, 
-        customRules, 
-        selectedRules, 
+        content,
+        customRules,
         customToken,
-        shortCode,
-        maxAllowedRules,
-        sortBy,
-        includeUnsupportedProxy,
-        emoji,
-        udp,
-        xudp,
-        tfo,
-        fdn,
-        sort,
-        scv,
-        fpcdn,
-        appendUserinfo
+        isLinkable,
+        selectedRules,
+        subscriptionUrl
       } = requestData;
-
+    
       if (!type || !subscriptionUrl) {
         return new Response(JSON.stringify({
           success: false,
@@ -442,35 +430,23 @@ async function handleApiRequest(request, configManager, env) {
           headers: { 'Content-Type': 'application/json' }
         });
       }
-
+    
       try {
         // 获取节点数据
         const nodes = await fetchNodesFromUrl(subscriptionUrl);
         
-        // 保存配置数据
+        // 构建完整的配置数据
         const configData = {
           type,
-          subscriptionUrl,
-          config: config || '',
-          customRules: customRules || '',
-          selectedRules: selectedRules || [],
-          shortCode: shortCode || '',
-          maxAllowedRules: maxAllowedRules || '10000',
-          sortBy: sortBy || 'name',
-          includeUnsupportedProxy: !!includeUnsupportedProxy,
-          emoji: !!emoji,
-          udp: !!udp,
-          xudp: !!xudp,
-          tfo: !!tfo,
-          fdn: !!fdn,
-          sort: !!sort,
-          scv: !!scv,
-          fpcdn: !!fpcdn,
-          appendUserinfo: !!appendUserinfo
+          content,
+          customRules: JSON.stringify(customRules || []),
+          customToken,
+          isLinkable: isLinkable !== false, // 默认为true
+          selectedRules: JSON.stringify(selectedRules || []),
+          subscriptionUrl
         };
         
-        // 保存配置
-        const result = await configManager.saveConfig(type, JSON.stringify(configData), nodes, customToken);
+        const result = await configManager.saveConfig(configData, nodes);
         
         return new Response(JSON.stringify({
           success: true,
@@ -727,10 +703,10 @@ async function fetchNodesFromUrl(subscriptionUrl) {
       return node ? [node] : [];
     }
     
-    // 处理HTTP/HTTPS订阅链接
+    // 处理HTTP/HTTPS订阅链接 get请求
     const response = await fetch(subscriptionUrl, {
       headers: {
-        'User-Agent': 'ClashForAndroid/2.5.12'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     });
     
