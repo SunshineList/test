@@ -466,8 +466,75 @@ async function handleApiRequest(request, configManager, env) {
       }
     }
 
+    // 从URL保存配置的特殊端点
+    if (path === '/api/configs/save-from-url' && request.method === 'POST') {
+      try {
+        const requestData = await request.json();
+        const { 
+          type, 
+          content,
+          customRules,
+          customToken,
+          isLinkable,
+          selectedRules,
+          subscriptionUrl
+        } = requestData;
+        
+        if (!type || !content) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: '缺少必要参数: type 和 content'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // 从配置内容中提取节点信息
+        let nodes = [];
+        try {
+          if (typeof content === 'object') {
+            nodes = extractNodesFromContent(content);
+          } else {
+            nodes = extractNodesFromContent(JSON.parse(content));
+          }
+        } catch (e) {
+          console.error('提取节点失败:', e);
+          nodes = [];
+        }
+        
+        // 构建完整的配置数据
+        const configData = {
+          type,
+          content: typeof content === 'object' ? JSON.stringify(content) : content,
+          customRules: JSON.stringify(customRules || []),
+          customToken: customToken, // 使用前端生成的token
+          isLinkable: isLinkable !== false,
+          selectedRules: JSON.stringify(selectedRules || []),
+          subscriptionUrl // 保存原始订阅链接用于显示
+        };
+        
+        const result = await configManager.saveConfig(configData, nodes, customToken);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: result
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error.message
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // 获取单个配置详情
-    if (path.startsWith('/api/configs/') && request.method === 'GET') {
+    if (path.startsWith('/api/configs/') && !path.includes('save-from-url') && request.method === 'GET') {
       const configId = path.split('/')[3];
       const configData = await configManager.getConfig(configId);
       

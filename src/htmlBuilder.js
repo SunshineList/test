@@ -305,8 +305,8 @@ const saveConfigFromUrl = () => `
         saveData.customRules = customRules;
       }
       
-      // 发送保存请求
-      const saveResponse = await fetch('/api/configs', {
+      // 发送保存请求 - 使用新的API端点来保存从URL生成的配置
+      const saveResponse = await fetch('/api/configs/save-from-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -339,17 +339,6 @@ const saveConfigFromUrl = () => `
   }
 `;
 const customPathFunctions = () => `
-    const customPath = document.getElementById('customShortCode').value;
-    if (customPath) {
-      let savedPaths = JSON.parse(localStorage.getItem('savedCustomPaths') || '[]');
-      if (!savedPaths.includes(customPath)) {
-        savedPaths.push(customPath);
-        localStorage.setItem('savedCustomPaths', JSON.stringify(savedPaths));
-        updateSavedPathsDropdown();
-      }
-    }
-  
-
   function updateSavedPathsDropdown() {
     const savedPaths = JSON.parse(localStorage.getItem('savedCustomPaths') || '[]');
     const dropdown = document.getElementById('savedCustomPaths');
@@ -422,7 +411,10 @@ const shortenAllUrlsFunction = () => `
   let isShortening = false;
 
   async function shortenUrl(url, customShortCode) {
-    saveCustomPath();
+    // 保存自定义路径到localStorage
+    if (customShortCode) {
+      localStorage.setItem('customPath', customShortCode);
+    }
     const response = await fetch(\`/shorten-v2?url=\${encodeURIComponent(url)}&shortCode=\${encodeURIComponent(customShortCode || '')}\`);
     if (response.ok) {
       const data = await response.text();
@@ -1469,30 +1461,7 @@ const customRuleFunctions = () => `
     observer.observe(document.getElementById('customRules'), { childList: true, subtree: true });
   });
 
-  function addCustomRuleJSON() {
-    const customRulesJSONDiv = document.getElementById('customRulesJSON');
-    const newRuleDiv = document.createElement('div');
-    newRuleDiv.className = 'custom-rule-json mb-3 p-3 border rounded';
-    newRuleDiv.dataset.ruleId = customRuleCount++;
-    newRuleDiv.innerHTML = \`
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0">${t('customRuleJSON')}</h6>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeRule(this)">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="mb-2">
-        <label class="form-label">${t('customRuleJSON')}</label>
-        <div class="json-textarea-container">
-          <textarea class="form-control json-textarea" name="customRuleJSON[]" rows="15"
-                    oninput="validateJSONRealtime(this)"></textarea>
-          <div class="json-validation-message" style="display: none;"></div>
-        </div>
-      </div>
-    \`;
-    customRulesJSONDiv.appendChild(newRuleDiv);
-    updateEmptyMessages();
-  }
+
 `;
 
 const generateQRCodeFunction = () => `
@@ -1632,82 +1601,7 @@ const generateConfigHistoryPanel = () => `
   </div>
 `;
 
-// 配置历史项模板
-const generateConfigHistoryItem = (config, index) => {
-  const isLinkable = config.type === 'clash' || config.type === 'singbox';
-  
-  return `
-    <div class="config-history-item p-3 border-bottom" onclick="loadConfigFromHistory('${config.id}')" data-config-id="${config.id}">
-      <div class="d-flex justify-content-between align-items-start">
-        <div class="flex-grow-1">
-          <h6 class="mb-1">
-            <span class="badge bg-primary config-type-badge me-2">${config.type.toUpperCase()}</span>
-            配置 #${index + 1}
-            ${isLinkable ? '<span class="badge bg-success ms-2"><i class="fas fa-link"></i> 支持联动</span>' : ''}
-          </h6>
-          <p class="mb-1 text-muted small">
-            <i class="fas fa-calendar me-1"></i>
-            ${new Date(config.created_at).toLocaleString('zh-CN')}
-          </p>
-          <p class="mb-2 text-muted small">
-            <i class="fas fa-server me-1"></i>
-            节点数: ${config.nodeCount || 0}
-          </p>
-          
-          <!-- 订阅地址区域 -->
-          <div class="subscription-info">
-            <p class="mb-1 small">
-              <strong>订阅地址:</strong>
-            </p>
-            <div class="input-group input-group-sm">
-              <input type="text" class="form-control subscription-url" 
-                     value="${generateSubscriptionUrlFromConfig(config)}" readonly>
-              <button class="btn btn-outline-secondary" onclick="copySubscriptionUrlFromHistory(this, event)">
-                <i class="fas fa-copy"></i>
-              </button>
-              <button class="btn btn-outline-primary" onclick="generateQRCodeFromHistory('${generateSubscriptionUrlFromConfig(config)}', event)">
-                <i class="fas fa-qrcode"></i>
-              </button>
-            </div>
-          </div>
-          
-          <!-- 分享链接区域 (仅对支持联动的配置显示) -->
-          ${isLinkable ? `
-          <div class="share-links-section mt-2" id="shareLinks-${config.id}" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <p class="mb-0 small">
-                <strong>分享链接:</strong>
-              </p>
-              <button class="btn btn-outline-info btn-sm" onclick="toggleShareLinks('${config.id}', event)">
-                <i class="fas fa-share-alt me-1"></i>显示分享链接
-              </button>
-            </div>
-            <div class="share-links-container">
-              <div class="text-center p-2">
-                <i class="fas fa-spinner fa-spin"></i> 生成中...
-              </div>
-            </div>
-          </div>
-          ` : ''}
-        </div>
-        
-        <div class="config-actions">
-          <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('${config.id}', event)" title="加载配置">
-            <i class="fas fa-download"></i>
-          </button>
-          ${isLinkable ? `
-          <button class="btn btn-outline-info btn-sm me-1" onclick="syncConfigToLeftPanel('${config.id}', event)" title="联动到左侧表单">
-            <i class="fas fa-link"></i>
-          </button>
-          ` : ''}
-          <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('${config.id}', event)" title="删除配置">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-};
+
 
 // 生成订阅URL
 const generateSubscriptionUrlFromConfig = (config) => {
