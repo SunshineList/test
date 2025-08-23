@@ -206,11 +206,22 @@ export class ConfigManager {
         try {
             const configs = await this.db.prepare(`
                 SELECT id, type, token, created_at, updated_at, target, name, description, access_count,
-                       JSON_ARRAY_LENGTH(nodes) as nodeCount
+                       LENGTH(nodes) - LENGTH(REPLACE(nodes, CHAR(10), '')) + 1 as nodeCount
                 FROM configs 
                 ORDER BY created_at DESC
             `).all();
 
+            console.log('ConfigManager.getConfigList - 查询结果:', configs);
+            
+            if (!configs.results) {
+                console.log('ConfigManager.getConfigList - 没有results字段，直接使用configs');
+                return (configs || []).map(config => ({
+                    ...config,
+                    createdAt: config.created_at,
+                    updatedAt: config.updated_at
+                }));
+            }
+            
             return configs.results.map(config => ({
                 ...config,
                 createdAt: config.created_at,
@@ -282,7 +293,7 @@ export class ConfigManager {
             `).all();
             
             const nodeStats = await this.db.prepare(`
-                SELECT SUM(JSON_ARRAY_LENGTH(nodes)) as totalNodes 
+                SELECT SUM(LENGTH(nodes) - LENGTH(REPLACE(nodes, CHAR(10), '')) + 1) as totalNodes 
                 FROM configs
             `).first();
 

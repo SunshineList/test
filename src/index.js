@@ -401,8 +401,10 @@ async function handleApiRequest(request, configManager, env) {
 
     // 获取配置列表
     if (path === '/api/configs' && request.method === 'GET') {
+      console.log('API: 获取配置列表请求');
       const configList = await configManager.getConfigList();
       const stats = await configManager.getConfigStats();
+      console.log('API: 配置列表结果:', { configCount: configList.length, stats });
       return new Response(JSON.stringify({
         success: true,
         data: configList,
