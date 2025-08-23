@@ -512,6 +512,51 @@ async function handleApiRequest(request, configManager, env) {
       });
     }
 
+    // 生成分享链接API端点 - 添加在其他API端点之前，return 404之前
+    if (path === '/api/configs/generate-share-links' && request.method === 'POST') {
+      try {
+        const { nodes } = await request.json();
+        
+        if (!Array.isArray(nodes)) {
+          return new Response(JSON.stringify({ error: 'Invalid nodes data' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const shareLinks = [];
+        
+        for (const node of nodes) {
+          try {
+            const uri = ProxyGenerator.generateUri(node);
+            shareLinks.push({
+              name: node.name,
+              type: node.type,
+              uri: uri
+            });
+          } catch (error) {
+            console.error(`Failed to generate URI for node ${node.name}:`, error);
+            shareLinks.push({
+              name: node.name,
+              type: node.type,
+              uri: null,
+              error: error.message
+            });
+          }
+        }
+        
+        return new Response(JSON.stringify({ shareLinks }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Error generating share links:', error);
+        return new Response(JSON.stringify({ error: 'Failed to generate share links' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     return new Response(JSON.stringify({
       success: false,
       error: 'API endpoint not found'
@@ -861,42 +906,3 @@ function extractNodesFromContent(content) {
   }
 }
 
-// 在文件顶部添加导入
-// const { ProxyGenerator } = require('./ProxyGenerators');
-
-// 在适当位置添加新的API端点（大约在第850行附近）
-app.post('/api/configs/generate-share-links', async (c) => {
-  try {
-    const { nodes } = await c.req.json();
-    
-    if (!Array.isArray(nodes)) {
-      return c.json({ error: 'Invalid nodes data' }, 400);
-    }
-    
-    const shareLinks = [];
-    
-    for (const node of nodes) {
-      try {
-        const uri = ProxyGenerator.generateUri(node);
-        shareLinks.push({
-          name: node.name,
-          type: node.type,
-          uri: uri
-        });
-      } catch (error) {
-        console.error(`Failed to generate URI for node ${node.name}:`, error);
-        shareLinks.push({
-          name: node.name,
-          type: node.type,
-          uri: null,
-          error: error.message
-        });
-      }
-    }
-    
-    return c.json({ shareLinks });
-  } catch (error) {
-    console.error('Error generating share links:', error);
-    return c.json({ error: 'Failed to generate share links' }, 500);
-  }
-});
