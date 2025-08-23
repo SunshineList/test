@@ -24,6 +24,13 @@ export class ConfigManager {
         const token = customToken || this.generateToken(id); // 修正：使用类方法
         const target = `${configData.type}-${Date.now()}`;
         
+        console.log('ConfigManager.saveConfig - 保存配置:', {
+            id, 
+            token, 
+            customToken, 
+            type: configData.type
+        });
+        
         const stmt = this.db.prepare(`
             INSERT INTO configs (
             id, type, content, nodes, token, target, name, description,
@@ -53,7 +60,9 @@ export class ConfigManager {
     // 获取配置
     async getConfig(configId) {
         try {
+            console.log('ConfigManager.getConfig - 查找配置ID:', configId);
             const config = await this.db.prepare('SELECT * FROM configs WHERE id = ?').bind(configId).first();
+            console.log('ConfigManager.getConfig - 查询结果:', config ? '找到配置' : '未找到配置');
             if (!config) return null;
 
             return {
@@ -73,7 +82,9 @@ export class ConfigManager {
     // 通过token获取配置
     async getConfigByToken(token) {
         try {
+            console.log('ConfigManager.getConfigByToken - 查找token:', token);
             const config = await this.db.prepare('SELECT * FROM configs WHERE token = ?').bind(token).first();
+            console.log('ConfigManager.getConfigByToken - 查询结果:', config ? '找到配置' : '未找到配置');
             if (!config) return null;
 
             return {

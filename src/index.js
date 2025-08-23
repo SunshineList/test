@@ -85,9 +85,12 @@ async function handleRequest(request, env, ctx) {
       }
       
       // 首先检查是否是存储的配置token
+      console.log('检查存储的配置token:', token);
       const storedConfig = await configManager.getConfigByToken(token);
+      console.log('存储的配置查询结果:', storedConfig ? '找到配置' : '未找到配置');
       if (token && storedConfig) {
-      return generateSubscriptionResponse(storedConfig, url.pathname);
+        console.log('使用存储的配置生成响应');
+        return generateSubscriptionResponse(storedConfig, url.pathname);
       }
       
       // 然后检查是否是有效的临时token
@@ -535,7 +538,9 @@ async function handleApiRequest(request, configManager, env) {
 
     // 获取单个配置详情
     if (path.startsWith('/api/configs/') && !path.includes('save-from-url') && request.method === 'GET') {
-      const configId = path.split('/')[3];
+      const pathParts = path.split('/');
+      const configId = pathParts[3];
+      console.log('获取配置详情 - 路径:', path, '配置ID:', configId, '路径部分:', pathParts);
       const configData = await configManager.getConfig(configId);
       
       if (!configData) {
