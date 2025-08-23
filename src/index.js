@@ -473,9 +473,10 @@ async function handleApiRequest(request, configManager, env) {
     if (path === '/api/configs/save-from-url' && request.method === 'POST') {
       try {
         const requestData = await request.json();
-        const { 
+        const {
           type, 
           content,
+          nodes,
           customRules,
           customToken,
           isLinkable,
@@ -493,18 +494,8 @@ async function handleApiRequest(request, configManager, env) {
           });
         }
         
-        // 从配置内容中提取节点信息
-        let nodes = [];
-        try {
-          if (typeof content === 'object') {
-            nodes = extractNodesFromContent(content);
-          } else {
-            nodes = extractNodesFromContent(JSON.parse(content));
-          }
-        } catch (e) {
-          console.error('提取节点失败:', e);
-          nodes = [];
-        }
+        // nodes字段已在解构赋值中获取
+        console.log('保存配置 - 接收到的nodes:', nodes);
         
         // 构建完整的配置数据
         const configData = {

@@ -1848,9 +1848,9 @@ const configHistoryFunctions = () => `
     // 检查是否支持联动（只有Clash和Sing-box支持）
     const isLinkable = config.type === 'clash' || config.type === 'singbox';
     
-    // 首先从配置中获取原始订阅URL
-    const subscriptionUrl = config.subscription_url || '';
-    document.getElementById('inputTextarea').value = subscriptionUrl;
+    // 使用配置中保存的nodes字段（用户填写的分享链接）
+    const nodes = config.nodes || '';
+    document.getElementById('inputTextarea').value = nodes;
     
     // 填充配置类型
     const configTypeSelect = document.getElementById('configType');

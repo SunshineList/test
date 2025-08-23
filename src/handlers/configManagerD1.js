@@ -28,7 +28,10 @@ export class ConfigManager {
             id, 
             token, 
             customToken, 
-            type: configData.type
+            type: configData.type,
+            nodes: nodes,
+            nodesType: typeof nodes,
+            nodesLength: Array.isArray(nodes) ? nodes.length : (nodes ? nodes.length : 0)
         });
         
         const stmt = this.db.prepare(`
@@ -42,7 +45,7 @@ export class ConfigManager {
             id,
             configData.type,
             configData.content,
-            JSON.stringify(nodes),
+            Array.isArray(nodes) ? nodes.join('\n') : nodes, // 将数组转为换行分隔的字符串
             token,
             target,
             configData.name || null,
