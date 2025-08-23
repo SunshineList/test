@@ -365,11 +365,36 @@ async function handleRequest(request, env, ctx) {
 }
 
 // API请求处理
-async function handleApiRequest(request, configManager) {
+async function handleApiRequest(request, configManager, env) {
   const url = new URL(request.url);
   const path = url.pathname;
 
   try {
+    // 存储临时token到KV
+    if (path === '/api/store-temp-token' && request.method === 'POST') {
+      try {
+        const { token } = await request.json();
+        if (!token) {
+          return new Response(JSON.stringify({ success: false, error: '缺少token参数' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // 存储到KV，设置1小时过期
+        await env.TEMP_TOKENS.put(`temp_${token}`, 'valid', { expirationTtl: 3600 });
+        
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ success: false, error: error.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // 获取配置列表
     if (path === '/api/configs' && request.method === 'GET') {
       const configList = await configManager.getConfigList();
