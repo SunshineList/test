@@ -8,6 +8,7 @@ import { PREDEFINED_RULE_SETS } from './config.js';
 import { t, setLanguage } from './i18n/index.js';
 import { AuthHandler } from './handlers/auth.js';
 import { ConfigManager } from './handlers/configManagerD1.js';
+import { ProxyGenerator } from './ProxyGenerators.js';
 import yaml from 'js-yaml';
 
 export default {
@@ -421,10 +422,10 @@ async function handleApiRequest(request, configManager, env) {
         subscriptionUrl
       } = requestData;
     
-      if (!type || !subscriptionUrl) {
+      if (!type || !content) {
         return new Response(JSON.stringify({
           success: false,
-          error: '缺少必要参数: type 和 subscriptionUrl'
+          error: '缺少必要参数: type 和 content'
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -432,8 +433,8 @@ async function handleApiRequest(request, configManager, env) {
       }
     
       try {
-        // 获取节点数据
-        const nodes = await fetchNodesFromUrl(subscriptionUrl);
+        // 不再请求订阅链接，直接从content中提取节点信息
+        const nodes = extractNodesFromContent(content);
         
         // 构建完整的配置数据
         const configData = {
@@ -441,9 +442,9 @@ async function handleApiRequest(request, configManager, env) {
           content,
           customRules: JSON.stringify(customRules || []),
           customToken,
-          isLinkable: isLinkable !== false, // 默认为true
+          isLinkable: isLinkable !== false,
           selectedRules: JSON.stringify(selectedRules || []),
-          subscriptionUrl
+          subscriptionUrl // 保存原始订阅链接用于显示
         };
         
         const result = await configManager.saveConfig(configData, nodes);
@@ -704,18 +705,18 @@ async function fetchNodesFromUrl(subscriptionUrl) {
     }
     
     // 处理HTTP/HTTPS订阅链接 get请求
-    const response = await fetch(subscriptionUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
+    // const response = await fetch(subscriptionUrl, {
+    //   headers: {
+    //     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    //   }
+    // });
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch subscription: ${response.status}`);
-    }
+    // if (!response.ok) {
+    //   throw new Error(`Failed to fetch subscription: ${response.status}`);
+    // }
     
-    const content = await response.text();
-    const nodes = [];
+    // const content = await response.text();
+    // const nodes = [];
     
     // 解析base64编码的内容
     let decodedContent;
@@ -838,3 +839,64 @@ function parseHysteria2(uri) {
     down_mbps: parseInt(url.searchParams.get('downmbps')) || 50
   };
 }
+
+// 从配置内容中提取节点信息
+function extractNodesFromContent(content) {
+  try {
+    const config = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    // 提取proxies节点信息
+    const proxies = config.proxies || [];
+    
+    return proxies.map(proxy => ({
+      name: proxy.name,
+      type: proxy.type,
+      server: proxy.server,
+      port: proxy.port,
+      settings: JSON.stringify(proxy)
+    }));
+  } catch (error) {
+    console.error('提取节点信息失败:', error);
+    return [];
+  }
+}
+
+// 在文件顶部添加导入
+// const { ProxyGenerator } = require('./ProxyGenerators');
+
+// 在适当位置添加新的API端点（大约在第850行附近）
+app.post('/api/configs/generate-share-links', async (c) => {
+  try {
+    const { nodes } = await c.req.json();
+    
+    if (!Array.isArray(nodes)) {
+      return c.json({ error: 'Invalid nodes data' }, 400);
+    }
+    
+    const shareLinks = [];
+    
+    for (const node of nodes) {
+      try {
+        const uri = ProxyGenerator.generateUri(node);
+        shareLinks.push({
+          name: node.name,
+          type: node.type,
+          uri: uri
+        });
+      } catch (error) {
+        console.error(`Failed to generate URI for node ${node.name}:`, error);
+        shareLinks.push({
+          name: node.name,
+          type: node.type,
+          uri: null,
+          error: error.message
+        });
+      }
+    }
+    
+    return c.json({ shareLinks });
+  } catch (error) {
+    console.error('Error generating share links:', error);
+    return c.json({ error: 'Failed to generate share links' }, 500);
+  }
+});

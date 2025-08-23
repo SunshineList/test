@@ -1625,49 +1625,76 @@ const generateConfigHistoryPanel = () => `
 `;
 
 // 配置历史项模板
-const generateConfigHistoryItem = (config, index) => `
-  <div class="config-history-item p-3 border-bottom" onclick="loadConfigFromHistory('${config.id}')" data-config-id="${config.id}">
-    <div class="d-flex justify-content-between align-items-start">
-      <div class="flex-grow-1">
-        <h6 class="mb-1">
-          <span class="badge bg-primary config-type-badge me-2">${config.type.toUpperCase()}</span>
-          配置 #${index + 1}
-        </h6>
-        <p class="mb-1 text-muted small">
-          <i class="fas fa-calendar me-1"></i>
-          ${new Date(config.created_at).toLocaleString('zh-CN')}
-        </p>
-        <p class="mb-2 text-muted small">
-          <i class="fas fa-server me-1"></i>
-          节点数: ${config.nodeCount || 0}
-        </p>
-        <div class="subscription-info">
-          <p class="mb-1 small">
-            <strong>订阅地址:</strong>
+const generateConfigHistoryItem = (config, index) => {
+  const isLinkable = config.type === 'clash' || config.type === 'singbox';
+  
+  return `
+    <div class="config-history-item p-3 border-bottom" onclick="loadConfigFromHistory('${config.id}')" data-config-id="${config.id}">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+          <h6 class="mb-1">
+            <span class="badge bg-primary config-type-badge me-2">${config.type.toUpperCase()}</span>
+            配置 #${index + 1}
+            ${isLinkable ? '<span class="badge bg-success ms-2"><i class="fas fa-link"></i> 支持联动</span>' : ''}
+          </h6>
+          <p class="mb-1 text-muted small">
+            <i class="fas fa-calendar me-1"></i>
+            ${new Date(config.created_at).toLocaleString('zh-CN')}
           </p>
-          <div class="input-group input-group-sm">
-            <input type="text" class="form-control subscription-url" 
-                   value="${generateSubscriptionUrlFromConfig(config)}" readonly>
-            <button class="btn btn-outline-secondary" onclick="copySubscriptionUrlFromHistory(this, event)">
-              <i class="fas fa-copy"></i>
-            </button>
-            <button class="btn btn-outline-primary" onclick="generateQRCodeFromHistory('${generateSubscriptionUrlFromConfig(config)}', event)">
-              <i class="fas fa-qrcode"></i>
-            </button>
+          <p class="mb-2 text-muted small">
+            <i class="fas fa-server me-1"></i>
+            节点数: ${config.nodeCount || 0}
+          </p>
+          
+          <!-- 订阅地址区域 -->
+          <div class="subscription-info">
+            <p class="mb-1 small">
+              <strong>订阅地址:</strong>
+            </p>
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control subscription-url" 
+                     value="${generateSubscriptionUrlFromConfig(config)}" readonly>
+              <button class="btn btn-outline-secondary" onclick="copySubscriptionUrlFromHistory(this, event)">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button class="btn btn-outline-primary" onclick="generateQRCodeFromHistory('${generateSubscriptionUrlFromConfig(config)}', event)">
+                <i class="fas fa-qrcode"></i>
+              </button>
+            </div>
           </div>
+          
+          <!-- 分享链接区域 (仅对支持联动的配置显示) -->
+          ${isLinkable ? `
+          <div class="share-links-section mt-2" id="shareLinks-${config.id}" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <p class="mb-0 small">
+                <strong>分享链接:</strong>
+              </p>
+              <button class="btn btn-outline-info btn-sm" onclick="toggleShareLinks('${config.id}', event)">
+                <i class="fas fa-share-alt me-1"></i>显示分享链接
+              </button>
+            </div>
+            <div class="share-links-container">
+              <div class="text-center p-2">
+                <i class="fas fa-spinner fa-spin"></i> 生成中...
+              </div>
+            </div>
+          </div>
+          ` : ''}
+        </div>
+        
+        <div class="config-actions">
+          <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('${config.id}', event)" title="加载配置">
+            <i class="fas fa-download"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('${config.id}', event)" title="删除配置">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
       </div>
-      <div class="config-actions">
-        <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('${config.id}', event)" title="加载配置">
-          <i class="fas fa-download"></i>
-        </button>
-        <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('${config.id}', event)" title="删除配置">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
     </div>
-  </div>
-`;
+  `;
+};
 
 // 生成订阅URL
 const generateSubscriptionUrlFromConfig = (config) => {
@@ -1942,6 +1969,16 @@ const configHistoryFunctions = () => `
     // 如果支持联动，解析配置并同步到左侧UI
     if (isLinkable) {
       syncConfigToUI(config, configData);
+      // 自动显示分享链接
+      setTimeout(() => {
+        const shareLinksSection = document.getElementById(\`shareLinks-\${config.id}\`);
+        if (shareLinksSection) {
+          const toggleButton = shareLinksSection.querySelector('button');
+          if (toggleButton) {
+            toggleButton.click();
+          }
+        }
+      }, 500);
     }
     
     // 填充选择的规则（对于所有类型）
@@ -2214,5 +2251,174 @@ const configHistoryFunctions = () => `
       'outbounds': singboxConfig.outbounds || [], 
       'route': singboxConfig.route || {} 
     };
+  }
+
+  // 切换分享链接显示
+  function toggleShareLinks(configId, event) {
+    if (event) event.stopPropagation();
+    
+    const container = document.getElementById(\`shareLinks-\${configId}\`);
+    const button = event.target.closest('button');
+    
+    if (!container) return;
+    
+    if (container.style.display === 'none') {
+      container.style.display = 'block';
+      button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>隐藏分享链接';
+      generateShareLinksForConfig(configId);
+    } else {
+      container.style.display = 'none';
+      button.innerHTML = '<i class="fas fa-share-alt me-1"></i>显示分享链接';
+    }
+  }
+
+  // 为配置生成分享链接
+  async function generateShareLinksForConfig(configId) {
+    try {
+      const container = document.getElementById(\`shareLinks-\${configId}\`);
+      if (!container) return;
+      
+      const linksContainer = container.querySelector('.share-links-container');
+      linksContainer.innerHTML = '<div class="text-center p-2"><i class="fas fa-spinner fa-spin"></i> 生成中...</div>';
+      
+      // 获取配置详情
+      const response = await fetch(\`/api/configs/\${configId}\`);
+      if (!response.ok) {
+        throw new Error('获取配置失败');
+      }
+      
+      const result = await response.json();
+      const config = result.data;
+      
+      // 解析配置内容获取节点
+      const nodes = await extractNodesFromConfig(config);
+      
+      if (!nodes || nodes.length === 0) {
+        linksContainer.innerHTML = '<div class="alert alert-warning small p-2 mb-0">未找到可用节点</div>';
+        return;
+      }
+      
+      // 调用生成分享链接API
+      const shareResponse = await fetch('/api/configs/generate-share-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes })
+      });
+      
+      if (shareResponse.ok) {
+        const shareResult = await shareResponse.json();
+        displayShareLinks(configId, shareResult.shareLinks);
+      } else {
+        throw new Error('生成分享链接失败');
+      }
+    } catch (error) {
+      console.error('生成分享链接失败:', error);
+      const container = document.getElementById(\`shareLinks-\${configId}\`);
+      if (container) {
+        const linksContainer = container.querySelector('.share-links-container');
+        linksContainer.innerHTML = \`<div class="alert alert-danger small p-2 mb-0">生成失败: \${error.message}</div>\`;
+      }
+    }
+  }
+
+  // 显示分享链接
+  function displayShareLinks(configId, shareLinks) {
+    const container = document.getElementById(\`shareLinks-\${configId}\`);
+    if (!container) return;
+    
+    const linksContainer = container.querySelector('.share-links-container');
+    
+    if (!shareLinks || shareLinks.length === 0) {
+      linksContainer.innerHTML = '<div class="alert alert-warning small p-2 mb-0">未生成任何分享链接</div>';
+      return;
+    }
+    
+    const linksHtml = shareLinks.map(link => {
+      if (link.error) {
+        return \`<div class="alert alert-warning small p-1 mb-1">\${link.name}: \${link.error}</div>\`;
+      }
+      return \`
+        <div class="input-group input-group-sm mb-1">
+          <span class="input-group-text" style="min-width: 60px;">\${link.type.toUpperCase()}</span>
+          <input type="text" class="form-control" value="\${link.uri}" readonly title="\${link.name}">
+          <button class="btn btn-outline-secondary" onclick="copyShareLink(this, event)" title="复制链接">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+      \`;
+    }).join('');
+    
+    linksContainer.innerHTML = linksHtml;
+  }
+
+  // 从配置中提取节点
+  async function extractNodesFromConfig(config) {
+    try {
+      let configContent = config.content;
+      
+      // 如果content是字符串，尝试解析为JSON
+      if (typeof configContent === 'string') {
+        try {
+          configContent = JSON.parse(configContent);
+        } catch (e) {
+          console.log('配置不是JSON格式，可能是YAML或其他格式');
+          return [];
+        }
+      }
+      
+      const nodes = [];
+      
+      if (config.type === 'clash') {
+        // 从Clash配置中提取节点
+        if (configContent.proxies && Array.isArray(configContent.proxies)) {
+          configContent.proxies.forEach(proxy => {
+            if (proxy.type && proxy.name && proxy.server && proxy.port) {
+              nodes.push({
+                name: proxy.name,
+                type: proxy.type,
+                server: proxy.server,
+                port: proxy.port,
+                ...proxy // 包含所有其他属性
+              });
+            }
+          });
+        }
+      } else if (config.type === 'singbox') {
+        // 从Sing-box配置中提取节点
+        if (configContent.outbounds && Array.isArray(configContent.outbounds)) {
+          configContent.outbounds.forEach(outbound => {
+            if (outbound.type && outbound.tag && outbound.server && outbound.server_port) {
+              nodes.push({
+                name: outbound.tag,
+                type: outbound.type,
+                server: outbound.server,
+                port: outbound.server_port,
+                ...outbound // 包含所有其他属性
+              });
+            }
+          });
+        }
+      }
+      
+      return nodes;
+    } catch (error) {
+      console.error('提取节点失败:', error);
+      return [];
+    }
+  }
+
+  // 复制分享链接
+  function copyShareLink(button, event) {
+    if (event) event.stopPropagation();
+    
+    const input = button.parentElement.querySelector('input');
+    input.select();
+    document.execCommand('copy');
+    
+    const originalIcon = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => {
+      button.innerHTML = originalIcon;
+    }, 2000);
   }
 `;
