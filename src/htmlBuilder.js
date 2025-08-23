@@ -803,6 +803,19 @@ const submitFormFunction = () => `
       } catch (error) {
         console.error('存储临时token失败:', error);
       }
+    }else{
+      // 将token存储到KV（通过API调用）
+      try {
+        await fetch('/api/store-temp-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token })
+        });
+      } catch (error) {
+        console.error('存储临时token失败:', error);
+      }
     }
 
     const configParam = configId ? \`&configId=\${configId}\` : '';
