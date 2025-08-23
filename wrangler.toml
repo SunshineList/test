@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 # KV存储绑定
 kv_namespaces = [
   { binding = "SUBLINK_FULL_KV", id = "31f210a25b9b4e96b27b303b1edd5d94" },
-  { binding = "TEMP_TOKENS", id = "新生成的ID" }
+  { binding = "TEMP_TOKENS", id = "eb098d6428844c54893604d466544d61" }
 ]
 
 # D1数据库绑定
