@@ -219,6 +219,15 @@ const generateRandomTokenFunction = () => `
     
     return result;
   }
+  
+  function generatePermanentToken() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
 `;
 
 const saveConfigFromUrl = () => `
@@ -273,15 +282,14 @@ const saveConfigFromUrl = () => `
         configContent = await response.text();
       }
       
-      // 从 URL 中提取 token
-      const urlObj = new URL(configUrl);
-      const token = urlObj.searchParams.get('token');
+      // 为配置生成一个新的永久token，不使用URL中的临时token
+      const newToken = generatePermanentToken();
       
       // 准备保存的数据
       const saveData = {
         type: configType,
         subscriptionUrl: configUrl,
-        customToken: token,
+        customToken: newToken,
         content: configContent,
         isLinkable: isLinkable
       };
@@ -1687,6 +1695,11 @@ const generateConfigHistoryItem = (config, index) => {
           <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('${config.id}', event)" title="加载配置">
             <i class="fas fa-download"></i>
           </button>
+          ${isLinkable ? `
+          <button class="btn btn-outline-info btn-sm me-1" onclick="syncConfigToLeftPanel('${config.id}', event)" title="联动到左侧表单">
+            <i class="fas fa-link"></i>
+          </button>
+          ` : ''}
           <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('${config.id}', event)" title="删除配置">
             <i class="fas fa-trash"></i>
           </button>
@@ -1768,6 +1781,7 @@ const configHistoryFunctions = () => `
   // 生成配置历史项HTML
   function generateConfigHistoryItemHtml(config, index) {
     const subscriptionUrl = generateSubscriptionUrlFromConfigJs(config);
+    const isLinkable = config.type === 'clash' || config.type === 'singbox';
     return \`
       <div class="config-history-item p-3 border-bottom" data-config-id="\${config.id}">
         <div class="d-flex justify-content-between align-items-start">
@@ -1775,6 +1789,7 @@ const configHistoryFunctions = () => `
             <h6 class="mb-1">
               <span class="badge bg-primary config-type-badge me-2">\${config.type.toUpperCase()}</span>
               配置 #\${index + 1}
+              \${isLinkable ? '<span class="badge bg-success ms-2"><i class="fas fa-link"></i> 支持联动</span>' : ''}
             </h6>
             <p class="mb-1 text-muted small">
               <i class="fas fa-calendar me-1"></i>
@@ -1804,6 +1819,11 @@ const configHistoryFunctions = () => `
             <button class="btn btn-outline-success btn-sm me-1" onclick="loadConfigFromHistory('\${config.id}', event)" title="加载配置">
               <i class="fas fa-download"></i>
             </button>
+            \${isLinkable ? \`
+            <button class="btn btn-outline-info btn-sm me-1" onclick="syncConfigToLeftPanel('\${config.id}', event)" title="联动到左侧表单">
+              <i class="fas fa-link"></i>
+            </button>
+            \` : ''}
             <button class="btn btn-outline-danger btn-sm" onclick="deleteConfigFromHistory('\${config.id}', event)" title="删除配置">
               <i class="fas fa-trash"></i>
             </button>
@@ -1903,11 +1923,18 @@ const configHistoryFunctions = () => `
         const config = result.success ? result.data : null;
         if (config) {
           populateFormWithConfig(config);
+          
+          // 自动触发转换以生成链接
+          const form = document.getElementById('encodeForm');
+          if (form) {
+            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+            form.dispatchEvent(submitEvent);
+          }
         } else {
           alert('配置数据格式错误');
           return;
         }
-        alert('配置已加载到表单');
+        alert('配置已加载到表单并已生成订阅链接');
       } else {
         alert('加载配置失败');
       }
@@ -1920,76 +1947,77 @@ const configHistoryFunctions = () => `
   // 用配置数据填充表单
   function populateFormWithConfig(config) {
     const form = document.getElementById('encodeForm');
-    const configData = typeof config.content === 'string' ? JSON.parse(config.content) : config.content;
     
     // 检查是否支持联动（只有Clash和Sing-box支持）
     const isLinkable = config.type === 'clash' || config.type === 'singbox';
     
-    // 填充基本字段
-    document.getElementById('inputTextarea').value = configData.subscriptionUrl || '';
-    const targetSelect = document.getElementById('configType');
-    if (targetSelect) targetSelect.value = configData.type || 'singbox';
-    const configEditor = document.getElementById('configEditor');
-    if (configEditor) configEditor.value = configData.config || '';
-    const customRulesField = document.getElementById('customRules');
-    if (customRulesField) customRulesField.value = configData.customRules || '';
-    const shortCodeField = document.getElementById('customShortCode');
-    if (shortCodeField) shortCodeField.value = configData.shortCode || '';
-    const maxRulesField = document.getElementById('maxAllowedRules');
-    if (maxRulesField) maxRulesField.value = configData.maxAllowedRules || '10000';
-    const sortByField = document.getElementById('sortBy');
-    if (sortByField) sortByField.value = configData.sortBy || 'name';
+    // 首先从配置中获取原始订阅URL
+    const subscriptionUrl = config.subscription_url || '';
+    document.getElementById('inputTextarea').value = subscriptionUrl;
     
-    // 填充Token字段
+    // 填充配置类型
+    const configTypeSelect = document.getElementById('configType');
+    if (configTypeSelect) {
+      configTypeSelect.value = config.type;
+    }
+    
+    // 填充Token字段（使用配置的永久token）
     const customTokenField = document.getElementById('customToken');
     if (customTokenField) {
       customTokenField.value = config.token || '';
     }
     
-    // 填充复选框
-    const checkboxes = {
-      includeUnsupportedProxy: document.getElementById('includeUnsupportedProxy'),
-      emoji: document.getElementById('emoji'),
-      udp: document.getElementById('udp'),
-      xudp: document.getElementById('xudp'),
-      tfo: document.getElementById('tfo'),
-      fdn: document.getElementById('fdn'),
-      sort: document.getElementById('sort'),
-      scv: document.getElementById('scv'),
-      fpcdn: document.getElementById('fpcdn'),
-      appendUserinfo: document.getElementById('appendUserinfo')
-    };
-    
-    Object.keys(checkboxes).forEach(key => {
-      if (checkboxes[key]) {
-        checkboxes[key].checked = configData[key] || false;
+    // 解析存储的规则选择
+    let selectedRulesArray = [];
+    if (config.selected_rules) {
+      try {
+        selectedRulesArray = JSON.parse(config.selected_rules);
+      } catch (e) {
+        console.error('解析选择规则失败:', e);
       }
-    });
-    
-    // 如果支持联动，解析配置并同步到左侧UI
-    if (isLinkable) {
-      syncConfigToUI(config, configData);
-      // 自动显示分享链接
-      setTimeout(() => {
-        const shareLinksSection = document.getElementById(\`shareLinks-\${config.id}\`);
-        if (shareLinksSection) {
-          const toggleButton = shareLinksSection.querySelector('button');
-          if (toggleButton) {
-            toggleButton.click();
-          }
-        }
-      }, 500);
     }
     
-    // 填充选择的规则（对于所有类型）
-    if (configData.selectedRules && configData.selectedRules.length > 0) {
-      const ruleCheckboxes = document.querySelectorAll('input[name="selectedRules"]');
-      ruleCheckboxes.forEach(checkbox => {
-        checkbox.checked = configData.selectedRules.includes(checkbox.value);
+    // 清除所有复选框
+    const ruleCheckboxes = document.querySelectorAll('.rule-checkbox');
+    ruleCheckboxes.forEach(checkbox => checkbox.checked = false);
+    
+    // 设置选中的规则
+    if (selectedRulesArray.length > 0) {
+      selectedRulesArray.forEach(ruleName => {
+        const checkbox = document.getElementById(ruleName);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
       });
       
       // 更新预定义规则选择器
-      updatePredefinedRuleSelector(configData.selectedRules);
+      updatePredefinedRuleSelector(selectedRulesArray);
+    }
+    
+    // 处理自定义规则
+    if (config.custom_rules) {
+      try {
+        const customRules = JSON.parse(config.custom_rules);
+        if (customRules.length > 0) {
+          // 清除现有自定义规则
+          document.querySelectorAll('.custom-rule').forEach(rule => rule.remove());
+          
+          // 切换到JSON视图并填充规则
+          switchCustomRulesTab('json');
+          const jsonTextarea = document.querySelector('#customRulesJSON textarea');
+          if (jsonTextarea) {
+            jsonTextarea.value = JSON.stringify(customRules, null, 2);
+            validateJSONRealtime(jsonTextarea);
+          }
+        }
+      } catch (e) {
+        console.error('解析自定义规则失败:', e);
+      }
+    }
+    
+    // 如果支持联动，同步配置内容到UI
+    if (isLinkable && config.content) {
+      syncConfigToUI(config);
     }
     
     // 显示高级选项
@@ -2079,9 +2107,11 @@ const configHistoryFunctions = () => `
   }
 
   // 同步配置到左侧UI（仅限Clash和Sing-box）
-  async function syncConfigToUI(config, configData) {
+  async function syncConfigToUI(config) {
     try {
       let fullConfig = config.content;
+      
+      // 处理存储的配置内容
       if (typeof fullConfig === 'string') {
         try {
           fullConfig = JSON.parse(fullConfig);
@@ -2091,9 +2121,18 @@ const configHistoryFunctions = () => `
         }
       }
       
+      // 将配置内容同步到配置编辑器
+      const configEditor = document.getElementById('configEditor');
+      if (configEditor && fullConfig) {
+        configEditor.value = JSON.stringify(fullConfig, null, 2);
+      }
+      
+      // 根据配置类型设置左侧表单
       if (config.type === 'clash') {
+        document.getElementById('configType').value = 'clash';
         syncClashConfigToUI(fullConfig);
       } else if (config.type === 'singbox') {
+        document.getElementById('configType').value = 'singbox';
         syncSingboxConfigToUI(fullConfig);
       }
     } catch (error) {
@@ -2420,5 +2459,41 @@ const configHistoryFunctions = () => `
     setTimeout(() => {
       button.innerHTML = originalIcon;
     }, 2000);
+  }
+
+  // 将配置同步到左侧面板
+  async function syncConfigToLeftPanel(configId, event) {
+    if (event) event.stopPropagation();
+    
+    try {
+      const response = await fetch(\`/api/configs/\${configId}\`);
+      if (response.ok) {
+        const result = await response.json();
+        const config = result.success ? result.data : null;
+        if (config) {
+          // 仅同步配置内容，不自动转换
+          populateFormWithConfig(config);
+          
+          // 高亮显示已同步
+          const button = event.target.closest('button');
+          const originalContent = button.innerHTML;
+          button.innerHTML = '<i class="fas fa-check"></i>';
+          button.classList.remove('btn-outline-info');
+          button.classList.add('btn-success');
+          
+          setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-info');
+          }, 2000);
+          
+          // 可选：滚动到表单顶部
+          document.getElementById('encodeForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    } catch (error) {
+      console.error('同步配置失败:', error);
+      alert('同步配置失败: ' + error.message);
+    }
   }
 `;

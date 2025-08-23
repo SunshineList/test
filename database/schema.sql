@@ -11,12 +11,11 @@ CREATE TABLE IF NOT EXISTS configs (
     name TEXT,
     description TEXT,
     access_count INTEGER DEFAULT 0,
-    -- 新增字段以支持前端UI联动
-    custom_rules TEXT, -- JSON格式存储自定义规则
-    custom_token TEXT, -- 自定义token
-    is_linkable BOOLEAN DEFAULT 1, -- 是否可链接
-    selected_rules TEXT, -- JSON格式存储选中的规则
-    subscription_url TEXT -- 订阅链接
+    custom_rules TEXT,
+    custom_token TEXT,
+    is_linkable BOOLEAN DEFAULT 1,
+    selected_rules TEXT,
+    subscription_url TEXT
 );
 
 -- 节点表 - 存储代理节点信息

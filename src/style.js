@@ -1098,4 +1098,14 @@ export const generateStyles = () => `
     visibility: visible;
     transform: translateY(0);
   }
+
+  .config-history-item.selected {
+    background-color: #e3f2fd !important;
+    border-left: 4px solid #2196f3 !important;
+  }
+
+  .config-history-item:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+  }
 `;
