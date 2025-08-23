@@ -38,7 +38,7 @@ export class ConfigManager {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
-        await stmt.bind(
+        const result = await stmt.bind(
             id,
             configData.type,
             configData.content,
@@ -47,12 +47,18 @@ export class ConfigManager {
             target,
             configData.name || null,
             configData.description || null,
-            configData.customRules,
-            configData.customToken,
+            configData.customRules || '[]',
+            token, // 将token也保存到custom_token字段
             configData.isLinkable ? 1 : 0,
-            configData.selectedRules,
-            configData.subscriptionUrl
+            configData.selectedRules || '[]',
+            configData.subscriptionUrl || ''
         ).run();
+        
+        console.log('ConfigManager.saveConfig - 保存结果:', result);
+        
+        // 验证保存是否成功
+        const verifyConfig = await this.db.prepare('SELECT id, token FROM configs WHERE id = ?').bind(id).first();
+        console.log('ConfigManager.saveConfig - 验证保存:', verifyConfig);
         
         return { id, token, target };
         }

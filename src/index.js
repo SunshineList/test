@@ -538,9 +538,9 @@ async function handleApiRequest(request, configManager, env) {
 
     // 获取单个配置详情
     if (path.startsWith('/api/configs/') && !path.includes('save-from-url') && request.method === 'GET') {
-      const pathParts = path.split('/');
-      const configId = pathParts[3];
-      console.log('获取配置详情 - 路径:', path, '配置ID:', configId, '路径部分:', pathParts);
+      const pathParts = path.split('/').filter(p => p); // 过滤空字符串
+      const configId = pathParts[2]; // 应该是 ['api', 'configs', 'configId']
+      console.log('获取配置详情 - 原始路径:', path, '过滤后路径部分:', pathParts, '提取的配置ID:', configId);
       const configData = await configManager.getConfig(configId);
       
       if (!configData) {
@@ -563,7 +563,7 @@ async function handleApiRequest(request, configManager, env) {
 
     // 删除配置
     if (path.startsWith('/api/configs/') && request.method === 'DELETE') {
-      const configId = path.split('/')[3];
+      const configId = path.split('/').filter(p => p)[2];
       const result = await configManager.deleteConfig(configId);
       
       return new Response(JSON.stringify(result), {
@@ -573,7 +573,7 @@ async function handleApiRequest(request, configManager, env) {
 
     // 更新配置节点
     if (path.startsWith('/api/configs/') && path.endsWith('/nodes') && request.method === 'POST') {
-      const configId = path.split('/')[3];
+      const configId = path.split('/').filter(p => p)[2];
       const requestData = await request.json();
       const { nodes } = requestData;
       
