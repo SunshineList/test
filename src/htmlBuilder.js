@@ -743,7 +743,7 @@ const tooltipFunction = () => `
 `;
 
 const submitFormFunction = () => `
-  function submitForm(event) {
+  async function submitForm(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
