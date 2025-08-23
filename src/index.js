@@ -862,28 +862,3 @@ function parseHysteria2(uri) {
     down_mbps: parseInt(url.searchParams.get('downmbps')) || 50
   };
 }
-
-// 在handleApiRequest函数中添加
-if (url.pathname === '/api/store-temp-token' && request.method === 'POST') {
-  try {
-    const { token } = await request.json();
-    if (!token) {
-      return new Response(JSON.stringify({ success: false, error: '缺少token参数' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // 存储到KV，设置1小时过期
-    await env.TEMP_TOKENS.put(`temp_${token}`, 'valid', { expirationTtl: 3600 });
-    
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
