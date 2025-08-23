@@ -68,7 +68,7 @@ async function handleRequest(request, env, ctx) {
 
     // API路由处理
     if (url.pathname.startsWith('/api/')) {
-      return handleApiRequest(request, configManager);
+      return handleApiRequest(request, configManager, env);
     }
     
     // 现有的配置生成路由（支持token验证）
