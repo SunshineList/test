@@ -280,7 +280,7 @@ const saveConfigFromUrl = () => `
       // 准备保存的数据
       const saveData = {
         type: configType,
-        subscriptionUrls: [configUrl],
+        subscriptionUrl: configUrl,
         customToken: token,
         content: configContent,
         isLinkable: isLinkable
